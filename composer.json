@@ -1,0 +1,20 @@
+{
+    "name": "fabia/payment-plugin-woocommerce",
+    "description": "Plugin de pago para woocommerce",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Fabia\\PaymentPluginWoocommerce\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "fabian pacheco",
+            "email": "fabian.pacheco@haulmer.com"
+        }
+    ],
+    "require": {
+        "pagofacil/php-sdk": "^0.1.0",
+        "ctala/transaccion-default": "V0.1.12.3"
+    }
+}

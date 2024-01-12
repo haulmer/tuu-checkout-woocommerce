@@ -11,21 +11,21 @@
 /*
  * This action hook registers our PHP class as a WooCommerce payment gateway
  */
-add_filter('woocommerce_payment_gateways', 'fabian_add_gateway_class');
-function fabian_add_gateway_class($gateways)
+add_filter('woocommerce_payment_gateways', 'plugin_add_gateway_class');
+function plugin_add_gateway_class($gateways)
 {
-    $gateways[] = 'WC_fabian_Gateway'; // your class name is here
+    $gateways[] = 'WC_plugin_Gateway'; // your class name is here
     return $gateways;
 }
 
 /*
  * The class itself, please note that it is inside plugins_loaded action hook
  */
-add_action('plugins_loaded', 'fabian_init_gateway_class');
-function fabian_init_gateway_class()
+add_action('plugins_loaded', 'plugin_init_gateway_class');
+function plugin_init_gateway_class()
 {
 
-    class WC_fabian_Gateway extends WC_Payment_Gateway
+    class WC_Plugin_Gateway extends WC_Payment_Gateway
     {
 
         /**
@@ -34,11 +34,11 @@ function fabian_init_gateway_class()
         public function __construct()
         {
 
-            $this->id = 'fabian'; // payment gateway plugin ID
+            $this->id = 'pluginid'; // payment gateway plugin ID
             $this->icon = ''; // URL of the icon that will be displayed on checkout page near your gateway name
             $this->has_fields = true; // in case you need a custom credit card form
-            $this->method_title = 'fabian Gateway';
-            $this->method_description = 'Description of fabian payment gateway'; // will be displayed on the options page
+            $this->method_title = 'Plugin Gateway';
+            $this->method_description = 'Payment plugin gateway for Woocommerce'; // will be displayed on the options page
 
             // gateways can support subscriptions, refunds, saved payment methods,
             // but in this tutorial we begin with simple payments
@@ -77,7 +77,7 @@ function fabian_init_gateway_class()
             $this->form_fields = array(
                 'enabled' => array(
                     'title'       => 'Enable/Disable',
-                    'label'       => 'Enable fabian Gateway',
+                    'label'       => 'Enable plugin Gateway',
                     'type'        => 'checkbox',
                     'description' => '',
                     'default'     => 'no'

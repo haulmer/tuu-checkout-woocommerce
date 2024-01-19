@@ -3,6 +3,7 @@
 namespace WoocommercePlugin\classes;
 
 use WC_Order;
+use WoocommercePlugin\classes\Logger;
 
 /** 
  * Esta clase es la encargada de crear el gateway de pago
@@ -15,6 +16,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
     public $token_service;
     public $token_secret;
     public $environment;
+    public $notify_url;
 
     /**
      * Class constructor, more about it in Step 3
@@ -25,7 +27,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         $this->id = 'pluginid'; // id del plugin
         $this->icon = ''; // url del icono(si hubiera)
         $this->has_fields = true; // si necesita campos de pago
-        $this->method_title = 'Fosi Payment Gateway';
+        $this->method_title = 'Swipe Payment Gateway';
         $this->method_description = 'Payment plugin gateway for Woocommerce'; // will be displayed on the options page
 
         // gateways can support subscriptions, refunds, saved payment methods,
@@ -39,7 +41,8 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
         // Load the settings.
         $this->init_settings();
-        $this->title = $this->get_option('title');
+
+        $this->title = __('Swipe Payment Gateway', 'woocommerce plugin');
         $this->description = $this->get_option('description');
 
         $this->environment = $this->get_option('ambiente');
@@ -47,14 +50,16 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         $this->token_service = $this->get_option('token_service');
         $this->token_secret = $this->get_option('token_secret');
 
+        $this->enabled = $this->get_option('enabled');
+
+        
+
 
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
         // This action hook saves the settings
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
 
-        // We need custom JavaScript to obtain a token
-        // add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
-
+        add_action('woocommerce_api_' . strtolower(get_class($this)), array($this, 'webhook'));
         // You can also register a webhook here
         // add_action( 'woocommerce_api_{webhook name}', array( $this, 'webhook' ) );
     }
@@ -87,7 +92,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
                 'title'       => 'Title',
                 'type'        => 'text',
                 'description' => 'Woocommerce plugin Gateway',
-                'default'     => ' ',
+                'default'     => 'Swipe Payment Gateway',
                 'desc_tip'    => true,
             ),
             'description' => array(
@@ -122,15 +127,14 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 		 */
     public function process_payment($order_id)
     {
-        global $woocommerce;
+        Logger::log("process_payment", "info");
         $order = new WC_Order($order_id);
 
         // Mark as on-hold (we're awaiting the cheque)
-        $order->update_status('on-hold', __('Awaiting cheque payment', 'woocommerce'));
-
+        // $order->update_status('on-hold', __('Awaiting cheque payment', 'woocommerce'));
 
         // Remove cart
-        $woocommerce->cart->empty_cart();
+        // $woocommerce->cart->empty_cart();
 
         // Return thankyou redirect
         return array(
@@ -144,6 +148,20 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
      */
     public function payment_fields()
     {
+        if ($this->description) {
+            echo wpautop(wptexturize($this->description));
+        }
+?>
+        <fieldset>
+            <p class="form-row form-row-wide">
+                <label for="payment_method_<?php echo $this->id; ?>_input">
+                    <?php echo __('Detalles de Pago Personalizados', ''); ?>
+                </label>
+                <input id="payment_method_<?php echo $this->id; ?>_input" type="text" class="input-text" name="payment_method_<?php echo $this->id; ?>_input" />
+            </p>
+            <div class="clear"></div>
+        </fieldset>
+<?php
     }
 
     /*

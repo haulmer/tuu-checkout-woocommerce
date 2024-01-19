@@ -4,7 +4,8 @@
     "type": "project",
     "autoload": {
         "psr-4": {
-            "Fabia\\PaymentPluginWoocommerce\\": "src/"
+            "Fabia\\PaymentPluginWoocommerce\\": "src/",
+            "Fabia\\PaymentPluginWoocommerce\\classes\\": "src/classes/"
         }
     },
     "authors": [

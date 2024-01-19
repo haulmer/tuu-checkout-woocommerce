@@ -1,5 +1,8 @@
 <?php
 
+namespace WoocommercePlugin;
+
+
 /*
   Plugin Name: Woocommerce payment gateway plugin
   Description: Plugin de pago para Woocommerce
@@ -7,66 +10,70 @@
   Author:      Fabian Pacheco
  */
 
+use WC_Order;
 
-/*
- * This action hook registers our PHP class as a WooCommerce payment gateway
- */
-add_filter('woocommerce_payment_gateways', 'plugin_add_gateway_class');
-function plugin_add_gateway_class($gateways)
-{
-    $gateways[] = 'WC_plugin_Gateway'; // your class name is here
-    return $gateways;
-}
 
 /*
  * The class itself, please note that it is inside plugins_loaded action hook
  */
-add_action('plugins_loaded', 'plugin_init_gateway_class');
+
+add_action('plugins_loaded', 'WoocommercePlugin\plugin_init_gateway_class');
 function plugin_init_gateway_class()
 {
-
-    class WC_Plugin_Gateway extends WC_Payment_Gateway
+    class WC_Plugin_Gateway extends \WC_Payment_Gateway
     {
+        public $token_service;
+        public $token_secret;
+        public $environment;
 
-        /**
-         * Class constructor, more about it in Step 3
-         */
+
         public function __construct()
         {
 
-            $this->id = 'pluginid'; // payment gateway plugin ID
-            $this->icon = ''; // URL of the icon that will be displayed on checkout page near your gateway name
-            $this->has_fields = true; // in case you need a custom credit card form
-            $this->method_title = 'Plugin Gateway';
+            $this->id = 'pluginid'; // id del plugin
+            $this->icon = ''; // url del icono(si hubiera)
+            $this->has_fields = true; // si necesita campos de pago
+            $this->method_title = 'Fosi Payment Gateway';
             $this->method_description = 'Payment plugin gateway for Woocommerce'; // will be displayed on the options page
 
             // gateways can support subscriptions, refunds, saved payment methods,
-            // but in this tutorial we begin with simple payments
+            // but we have simple payments
             $this->supports = array(
                 'products'
             );
+
+            $this->title = __('Fosi Payment Gateway', 'woocommerce plugin');
+            $this->description = $this->get_option('description');
+
+            $this->environment = $this->get_option('ambiente');
+
+            $this->token_service = $this->get_option('token_service');
+            $this->token_secret = $this->get_option('token_secret');
+
+            $this->enabled = $this->get_option('enabled');
 
             // Method with all the options fields
             $this->init_form_fields();
 
             // Load the settings.
             $this->init_settings();
-            $this->title = $this->get_option('title');
-            $this->description = $this->get_option('description');
-            $this->enabled = $this->get_option('enabled');
-            $this->testmode = 'yes' === $this->get_option('testmode');
-            $this->private_key = $this->testmode ? $this->get_option('test_private_key') : $this->get_option('private_key');
-            $this->publishable_key = $this->testmode ? $this->get_option('test_publishable_key') : $this->get_option('publishable_key');
 
+
+
+            add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
             // This action hook saves the settings
             add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
 
             // We need custom JavaScript to obtain a token
-            add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
+            // add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
 
             // You can also register a webhook here
             // add_action( 'woocommerce_api_{webhook name}', array( $this, 'webhook' ) );
+
+            // Add a custom field to the checkout page
+            // add_action('woocommerce_after_order_notes', array($this, 'customise_checkout_field'));
         }
+
 
         /**
          * Plugin options, we deal with it in Step 3 too
@@ -76,49 +83,74 @@ function plugin_init_gateway_class()
 
             $this->form_fields = array(
                 'enabled' => array(
-                    'title'       => 'Enable/Disable',
+                    'title'       => __('Enable/Disable', 'woocommerce'),
                     'label'       => 'Enable plugin Gateway',
                     'type'        => 'checkbox',
-                    'description' => '',
-                    'default'     => 'no'
+                    'default'     => 'yes'
+                ),
+                'ambiente' => array(
+                    'title' => __('Ambiente', 'woocommerce'),
+                    'type' => 'select',
+                    'label' => __('Habilita el modo de pruebas', 'woocommerce'),
+                    'default' => 'PRODUCCION',
+                    'options' => array(
+                        'PRODUCCION' => 'Producción',
+                        'DESARROLLO' => 'Desarrollo',
+                    )
                 ),
                 'title' => array(
-                    'title'       => 'Title',
+                    'title'       => __('Title', 'woocommerce'),
                     'type'        => 'text',
-                    'description' => 'This controls the title which the user sees during checkout.',
+                    'description' => 'Woocommerce plugin Gateway',
                     'default'     => ' ',
                     'desc_tip'    => true,
                 ),
                 'description' => array(
                     'title'       => 'Description',
                     'type'        => 'textarea',
-                    'description' => 'This controls the description which the user sees during checkout.',
-                    'default'     => 'Pay with your credit card via our super-cool payment gateway.',
+                    'description' => 'mensaje que se muestra en la pagina de pago',
+                    'default'     => 'Paga con tarjetas de crédito, débito y prepago a través de Webpay Plus',
                 ),
-                'testmode' => array(
-                    'title'       => 'Test mode',
-                    'label'       => 'Enable Test Mode',
-                    'type'        => 'checkbox',
-                    'description' => 'Place the payment gateway in test mode using test API keys.',
-                    'default'     => 'yes',
-                    'desc_tip'    => true,
+                'token_service' => array(
+                    'title' => "ID de Cuenta",
+                    'type' => 'text',
+                    'description' => "Ingresa el Account ID de Swipe",
+                    'default' => "",
                 ),
-                'test_publishable_key' => array(
-                    'title'       => 'Test Publishable Key',
-                    'type'        => 'text'
+                'token_secret' => array(
+                    'title' => "Llave Secreta",
+                    'type' => 'text',
+                    'description' => "Ingresa la Secret Key de Swipe",
+                    'default' => "",
                 ),
-                'test_private_key' => array(
-                    'title'       => 'Test Private Key',
-                    'type'        => 'password',
-                ),
-                'publishable_key' => array(
-                    'title'       => 'Live Publishable Key',
-                    'type'        => 'text'
-                ),
-                'private_key' => array(
-                    'title'       => 'Live Private Key',
-                    'type'        => 'password'
+                'redirect' => array(
+                    'title' => __(''),
+                    'type' => 'hidden',
+                    'label' => __('Si / No'),
+                    'default' => 'yes'
                 )
+            );
+        }
+
+        /*
+		 * Funcion necesaria para hacer el pago(crea el boton de pago)
+		 */
+        public function process_payment($order_id)
+        {
+            global $woocommerce;
+            $order = new WC_Order($order_id);
+
+            // Mark as on-hold (we're awaiting the cheque)
+            $order->update_status('on-hold', __('Awaiting cheque payment', 'woocommerce'));
+
+
+            // Remove cart
+            $woocommerce->cart->empty_cart();
+
+            // Return thankyou redirect
+            return array(
+                'result' => 'success',
+                'redirect' => $order->get_checkout_payment_url(true)
             );
         }
 
@@ -142,13 +174,16 @@ function plugin_init_gateway_class()
         public function validate_fields()
         {
         }
-
-        /*
-		 * We're processing the payments here, everything about it is in Step 5
-		 */
-        public function process_payment($order_id)
-        {
-        }
-
     }
 }
+
+/*
+ * This action hook registers our PHP class as a WooCommerce payment gateway
+ */
+
+ function plugin_add_gateway_class($gateways)
+ {
+     $gateways[] = 'WoocommercePlugin\WC_Plugin_Gateway'; // your class name is here
+     return $gateways;
+ }
+ add_filter('woocommerce_payment_gateways', 'WoocommercePlugin\plugin_add_gateway_class');

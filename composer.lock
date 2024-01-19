@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bebdbe561cbf967b8e256a43796eb94b",
+    "content-hash": "c3dd1ca09fa8ce7777fe5f54ff02f5bd",
     "packages": [
         {
             "name": "ctala/transaccion-default",
@@ -48,37 +48,38 @@
             "time": "2016-12-07T12:57:39+00:00"
         },
         {
-            "name": "pagofacil/php-sdk",
-            "version": "v0.1",
+            "name": "pacheco/swipe-woocommerce-php-sdk",
+            "version": "v0.0.1",
             "source": {
                 "type": "git",
-                "url": "https://github.com/PSTPAGOFACIL/SDK-PHP.git",
-                "reference": "af1fab9b061b37db0382c91ba589b904c2e23ec7"
+                "url": "https://github.com/F4bian-pacheco/Swipe-Wocommerce-php-sdk.git",
+                "reference": "0805f0a7a9e6ee18510c3fe7b07eaaaa49d92fc8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PSTPAGOFACIL/SDK-PHP/zipball/af1fab9b061b37db0382c91ba589b904c2e23ec7",
-                "reference": "af1fab9b061b37db0382c91ba589b904c2e23ec7",
+                "url": "https://api.github.com/repos/F4bian-pacheco/Swipe-Wocommerce-php-sdk/zipball/0805f0a7a9e6ee18510c3fe7b07eaaaa49d92fc8",
+                "reference": "0805f0a7a9e6ee18510c3fe7b07eaaaa49d92fc8",
                 "shasum": ""
             },
             "type": "library",
             "autoload": {
                 "psr-4": {
-                    "PagoFacil\\lib\\": "classes"
+                    "Swipe\\lib\\": "classes/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
             "authors": [
                 {
-                    "name": "Stephanie Piñero",
-                    "email": "stephanie@pagofacil.cl"
+                    "name": "fabian-pacheco",
+                    "email": "fabian.pacheco@haulmer.com"
                 }
             ],
+            "description": "sdk con metodos y clases necesarios para las transacciones",
             "support": {
-                "issues": "https://github.com/PSTPAGOFACIL/SDK-PHP/issues",
-                "source": "https://github.com/PSTPAGOFACIL/SDK-PHP/tree/v0.1"
+                "issues": "https://github.com/F4bian-pacheco/Swipe-Wocommerce-php-sdk/issues",
+                "source": "https://github.com/F4bian-pacheco/Swipe-Wocommerce-php-sdk/tree/v0.0.1"
             },
-            "time": "2018-07-10T20:49:15+00:00"
+            "time": "2024-01-19T14:55:25+00:00"
         }
     ],
     "packages-dev": [

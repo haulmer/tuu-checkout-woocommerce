@@ -4,9 +4,9 @@ namespace WoocommercePlugin;
 
 
 /*
-  Plugin Name: Woocommerce payment gateway plugin
+  Plugin Name: Woocommerce payment gateway for Swipe
   Description: Plugin de pago para Woocommerce
-  Version:     1.0.0
+  Version:     1.0.1
   Author:      Fabian Pacheco
  */
 
@@ -33,7 +33,7 @@ function plugin_init_gateway_class()
             $this->id = 'pluginid'; // id del plugin
             $this->icon = ''; // url del icono(si hubiera)
             $this->has_fields = true; // si necesita campos de pago
-            $this->method_title = 'Fosi Payment Gateway';
+            $this->method_title = 'Swipe Payment Gateway';
             $this->method_description = 'Payment plugin gateway for Woocommerce'; // will be displayed on the options page
 
             // gateways can support subscriptions, refunds, saved payment methods,
@@ -42,7 +42,7 @@ function plugin_init_gateway_class()
                 'products'
             );
 
-            $this->title = __('Fosi Payment Gateway', 'woocommerce plugin');
+            $this->title = __('Swipe Payment Gateway', 'woocommerce plugin');
             $this->description = $this->get_option('description');
 
             $this->environment = $this->get_option('ambiente');

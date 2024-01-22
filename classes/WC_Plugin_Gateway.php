@@ -5,6 +5,10 @@ namespace WoocommercePlugin\classes;
 use WC_Order;
 use WoocommercePlugin\classes\Logger;
 
+use Swipe\lib\Request;
+use Swipe\lib\Response;
+use Swipe\lib\Transaction;
+
 /** 
  * Esta clase es la encargada de crear el gateway de pago
  * 
@@ -29,6 +33,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         $this->has_fields = true; // si necesita campos de pago
         $this->method_title = 'Swipe Payment Gateway';
         $this->method_description = 'Payment plugin gateway for Woocommerce'; // will be displayed on the options page
+        $this->notify_url = WC()->api_request_url('WC_Plugin_Gateway'); // esta es la url que se llama cuando se hace el pago, pero no se usa, o si?
 
         // gateways can support subscriptions, refunds, saved payment methods,
         // but we have simple payments
@@ -52,7 +57,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
         $this->enabled = $this->get_option('enabled');
 
-        
+
 
 
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
@@ -127,7 +132,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 		 */
     public function process_payment($order_id)
     {
-        Logger::log("process_payment", "info");
+        Logger::log("iniciando el proceso de pago", "info");
         $order = new WC_Order($order_id);
 
         // Mark as on-hold (we're awaiting the cheque)
@@ -155,7 +160,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         <fieldset>
             <p class="form-row form-row-wide">
                 <label for="payment_method_<?php echo $this->id; ?>_input">
-                    <?php echo __('Detalles de Pago Personalizados', ''); ?>
+                    <?php echo __('Ingrese Rut(XXXXXXXX-X)', ''); ?>
                 </label>
                 <input id="payment_method_<?php echo $this->id; ?>_input" type="text" class="input-text" name="payment_method_<?php echo $this->id; ?>_input" />
             </p>
@@ -164,17 +169,26 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 <?php
     }
 
-    /*
-		 * Custom CSS and JS, in most cases required only when you decided to go with a custom credit card form
-		 */
-    public function payment_scripts()
+    public function receipt_page($order_id)
     {
+        $sufijo = "[RECEIPT]";
+        $DOBLEVALIDACION = $this->get_option('doblevalidacion');
+        $order = new WC_Order($order_id);
+        if ($DOBLEVALIDACION === "yes") {
+            error_log("Doble Validación Activada / " . $order->status);
+            if ($order->status === 'processing' || $order->status === 'completed') {
+                Logger::log("ORDEN YA PAGADA (" . $order->get_status() . ") EXISTENTE " . $order_id);
+                // Por solicitud muestro página de fracaso.
+                //$this->paginaError($order_id);
+                return false;
+            }
+        } else {
+            Logger::log("Doble Validación Desactivada / " . $order->get_status());
+        }
+
+        echo '<p>' . __('Gracias! - Tu orden ahora está pendiente de pago. Deberías ser redirigido automáticamente a Web pay.') . '</p>';
+        echo $this->generate_TBKAAS_form($order_id);
     }
 
-    /*
- 		 * Fields validation, more in Step 5
-		 */
-    public function validate_fields()
-    {
-    }
+    
 }

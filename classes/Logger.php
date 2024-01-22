@@ -11,8 +11,9 @@ namespace WoocommercePlugin\classes;
 class Logger {
 
     public static function log($message, $level = 'info') {
-        $log = new \WC_Logger();
-        $log->log($level, $message);
+        $logger = new \WC_Logger();
+        $logger->log($level, $message);
+        error_log($message);
     }
     
 }

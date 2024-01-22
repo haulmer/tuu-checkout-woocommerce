@@ -168,6 +168,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         </fieldset>
 <?php
     }
+    
 
     public function receipt_page($order_id)
     {
@@ -187,8 +188,142 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         }
 
         echo '<p>' . __('Gracias! - Tu orden ahora está pendiente de pago. Deberías ser redirigido automáticamente a Web pay.') . '</p>';
-        echo $this->generate_TBKAAS_form($order_id);
+        echo $this->generate_transaction_form($order_id);
     }
 
-    
+    public function generate_transaction_form($order_id)
+    {
+        $SUFIJO = "[WEBPAY - FORM]";
+
+        $order = new WC_Order($order_id);
+
+        /*
+         * Este es el token que representará la transaccion.
+         */
+        $token_tienda = (bin2hex(random_bytes(30)));
+
+        /*
+         * Agregamos el id de sesion la OC.
+         * Esto permitira que validemos el pago mas tarde
+         * Este valor no cambiara para la OC si est que ya está Creado
+         *
+         */
+        $token_tienda_db = get_post_meta($order_id, "_token_tienda", true);
+        Logger::log($token_tienda_db);
+        if (is_null($token_tienda_db) || $token_tienda_db == "") {
+            Logger::log("No existe TOKEN, lo agrego");
+            add_post_meta($order_id, '_token_tienda', $token_tienda, true);
+        } else {
+            Logger::log("Existe session");
+            $token_tienda = $token_tienda_db;
+        }
+
+        $monto = round($order->get_total());
+        $email = $order->get_billing_email();
+        $shop_country = $order->get_billing_country();
+
+        $nombre = $order->get_billing_first_name();
+        $apellido = $order->get_billing_last_name();
+        $telefono = $order->get_billing_phone();
+        $nombreSitio = get_bloginfo('name');
+
+        $line_items = $order->get_items();
+        $cadenaProductos = '';
+        foreach ($line_items as $item) {
+            $nombre = $item->get_name();
+            $cantidad = $item->get_quantity();
+            $cadenaProductos .= $nombre . ' (Cantidad: ' . $cantidad . '), ';
+        }
+        $cadenaProductos = rtrim($cadenaProductos, ', ');
+        
+        // get input by custom payment fields
+
+
+
+        $request = new Request();
+        //$request->account_id = $this->token_service;
+        //$request->amount = round($monto);
+
+        /*$request->currency = get_woocommerce_currency();
+        $request->reference = $order_id;
+        $request->customer_email =  $email;
+        $request->url_complete = $this->notify_url.'?complete';
+        $request->url_cancel = $this->notify_url;
+        $request->url_callback =  $this->notify_url.'?callback';
+        $request->shop_name = "Tienda Yrvin";
+        $request->shop_country = !empty($shop_country) ? $shop_country : 'CL';
+        $request->session_id = date('Ymdhis').rand(0, 9).rand(0, 9).rand(0, 9);*/
+
+        //echo $this->notify_url;
+        //exit;
+
+        $data = array(
+            "x_account_id" => $this->token_service,
+            "x_amount" => round($monto),
+            "x_currency" => get_woocommerce_currency(),
+            "x_customer_billing_address1" => "",
+            "x_customer_billing_address2" => "",
+            "x_customer_billing_city" => "",
+            "x_customer_billing_company" => "",
+            "x_customer_billing_country" => "",
+            "x_customer_billing_first_name" => "",
+            "x_customer_billing_last_name" => "",
+            "x_customer_billing_phone" => "",
+            "x_customer_billing_state" => "",
+            "x_customer_billing_zip" => "",
+            "x_customer_email" => $email,
+            "x_customer_first_name" => $nombre,
+            "x_customer_last_name" => $apellido,
+            "x_customer_phone" => $telefono,
+            "x_customer_shipping_address1" => "",
+            "x_customer_shipping_address2" => "",
+            "x_customer_shipping_city" => "",
+            "x_customer_shipping_company" => "",
+            "x_customer_shipping_country" => "",
+            "x_customer_shipping_first_name" => "",
+            "x_customer_shipping_last_name" => "",
+            "x_customer_shipping_phone" => "",
+            "x_customer_shipping_state" => "",
+            "x_customer_shipping_zip" => "",
+            "x_description" => $cadenaProductos,
+            "x_invoice" => "",
+            "x_reference" => $order_id,
+            "x_shop_country" => !empty($shop_country) ? $shop_country : 'CL',
+            "x_shop_name" => $nombreSitio,
+            "x_test" => "true",
+            "x_transaction_type" => "",
+            "x_url_callback" => $this->notify_url,
+            "x_url_cancel" => $this->notify_url,
+            "x_url_complete" => $this->notify_url
+        );
+
+        $new_data = array(
+            "platform" => "woocommerce",
+            "paymentMethod" => "webpay",
+            "x_account_id" => $this->token_service,
+            "x_amount" => round($monto),
+            "x_currency" => get_woocommerce_currency(),
+            "x_customer_email" => $email,
+            "x_customer_first_name" => $nombre,
+            "x_customer_last_name" => $apellido,
+            "x_customer_phone" => $telefono,
+            "x_description" => $cadenaProductos,
+            "x_reference" => $order_id,
+            "x_shop_country" => !empty($shop_country) ? $shop_country : 'CL',
+            "x_shop_name" => $nombreSitio,
+            "x_url_callback" => $this->notify_url,
+            "x_url_cancel" => $this->notify_url,
+            "x_url_complete" => $this->notify_url,
+            "secret" => 18756627,
+            "dte_type" => 48
+        );
+        logger::log("Datos enviados a Swipe: " . json_encode($data));
+        error_log("Token secret: " . $this->token_secret);
+        error_log("Token service: " . $this->token_service);
+
+        $transaction = new Transaction();
+        $transaction->environment =  $this->environment;
+        $transaction->setToken($this->token_secret);
+        $transaction->initTransaction($new_data);
+    }
 }

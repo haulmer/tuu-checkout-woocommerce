@@ -17,6 +17,11 @@ use WC_Order;
 use WoocommercePlugin\classes\WC_Plugin_Gateway;
 // require_once 'classes/WC_Plugin_Gateway.php';
 
+use Dotenv\Dotenv;
+
+$dotenv = Dotenv::createImmutable(__DIR__);
+$dotenv->load();
+
 
 /*
  * The class itself, please note that it is inside plugins_loaded action hook

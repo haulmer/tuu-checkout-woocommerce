@@ -222,7 +222,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         $email = $order->get_billing_email();
         $shop_country = $order->get_billing_country();
 
-        $nombre = $order->get_billing_first_name();
+        $nombre_customer = $order->get_billing_first_name();
         $apellido = $order->get_billing_last_name();
         $telefono = $order->get_billing_phone();
         $nombreSitio = get_bloginfo('name');
@@ -230,9 +230,9 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         $line_items = $order->get_items();
         $cadenaProductos = '';
         foreach ($line_items as $item) {
-            $nombre = $item->get_name();
+            $nombre_producto = $item->get_name();
             $cantidad = $item->get_quantity();
-            $cadenaProductos .= $nombre . ' (Cantidad: ' . $cantidad . '), ';
+            $cadenaProductos .= $nombre_producto . ' (Cantidad: ' . $cantidad . '), ';
         }
         $cadenaProductos = rtrim($cadenaProductos, ', ');
         
@@ -272,7 +272,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             "x_customer_billing_state" => "",
             "x_customer_billing_zip" => "",
             "x_customer_email" => $email,
-            "x_customer_first_name" => $nombre,
+            "x_customer_first_name" => $nombre_customer,
             "x_customer_last_name" => $apellido,
             "x_customer_phone" => $telefono,
             "x_customer_shipping_address1" => "",
@@ -304,7 +304,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             "x_amount" => round($monto),
             "x_currency" => get_woocommerce_currency(),
             "x_customer_email" => $email,
-            "x_customer_first_name" => $nombre,
+            "x_customer_first_name" => $nombre_customer,
             "x_customer_last_name" => $apellido,
             "x_customer_phone" => $telefono,
             "x_description" => $cadenaProductos,
@@ -317,13 +317,14 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             "secret" => 18756627,
             "dte_type" => 48
         );
-        logger::log("Datos enviados a Swipe: " . json_encode($data));
+        logger::log("Datos enviados a Swipe: " . json_encode($new_data));
         error_log("Token secret: " . $this->token_secret);
         error_log("Token service: " . $this->token_service);
 
         $transaction = new Transaction();
         $transaction->environment =  $this->environment;
         $transaction->setToken($this->token_secret);
-        $transaction->initTransaction($new_data);
+        $res = $transaction->initTransaction($new_data);
+        error_log("Respuesta de Swipe: " . json_encode($res));
     }
 }

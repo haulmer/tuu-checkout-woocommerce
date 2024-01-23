@@ -311,7 +311,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             "x_reference" => $order_id,
             "x_shop_country" => !empty($shop_country) ? $shop_country : 'CL',
             "x_shop_name" => $nombreSitio,
-            "x_url_callback" => "https://dev-pcihaulmer.azure-api.net/internal/v1/swipe",
+            "x_url_callback" => $_ENV['URL_CALLBACK'],
             "x_url_cancel" => $this->notify_url,
             "x_url_complete" => $this->notify_url,
             "secret" => $_ENV['SECRET'],

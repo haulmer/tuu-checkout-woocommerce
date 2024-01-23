@@ -5,8 +5,6 @@ namespace WoocommercePlugin\classes;
 use WC_Order;
 use WoocommercePlugin\classes\Logger;
 
-use Swipe\lib\Request;
-use Swipe\lib\Response;
 use Swipe\lib\Transaction;
 
 /** 
@@ -239,24 +237,6 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         // get input by custom payment fields
 
 
-
-        $request = new Request();
-        //$request->account_id = $this->token_service;
-        //$request->amount = round($monto);
-
-        /*$request->currency = get_woocommerce_currency();
-        $request->reference = $order_id;
-        $request->customer_email =  $email;
-        $request->url_complete = $this->notify_url.'?complete';
-        $request->url_cancel = $this->notify_url;
-        $request->url_callback =  $this->notify_url.'?callback';
-        $request->shop_name = "Tienda Yrvin";
-        $request->shop_country = !empty($shop_country) ? $shop_country : 'CL';
-        $request->session_id = date('Ymdhis').rand(0, 9).rand(0, 9).rand(0, 9);*/
-
-        //echo $this->notify_url;
-        //exit;
-
         $data = array(
             "x_account_id" => $this->token_service,
             "x_amount" => round($monto),
@@ -326,7 +306,6 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         $transaction->setToken($this->token_secret);
         $res = $transaction->initTransaction($new_data);
         error_log("Respuesta de Swipe: " . json_encode($res));
-        // set time out to 3 seconds before redirect to $response
         sleep(3);
         wp_redirect($res, 301);
     }

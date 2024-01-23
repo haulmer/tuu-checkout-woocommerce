@@ -311,10 +311,10 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             "x_reference" => $order_id,
             "x_shop_country" => !empty($shop_country) ? $shop_country : 'CL',
             "x_shop_name" => $nombreSitio,
-            "x_url_callback" => $this->notify_url,
+            "x_url_callback" => "https://dev-pcihaulmer.azure-api.net/internal/v1/swipe",
             "x_url_cancel" => $this->notify_url,
             "x_url_complete" => $this->notify_url,
-            "secret" => 18756627,
+            "secret" => $_ENV['SECRET'],
             "dte_type" => 48
         );
         logger::log("Datos enviados a Swipe: " . json_encode($new_data));
@@ -326,5 +326,8 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         $transaction->setToken($this->token_secret);
         $res = $transaction->initTransaction($new_data);
         error_log("Respuesta de Swipe: " . json_encode($res));
+        // set time out to 3 seconds before redirect to $response
+        sleep(3);
+        wp_redirect($res, 301);
     }
 }

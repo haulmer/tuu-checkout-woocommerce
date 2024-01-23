@@ -15,7 +15,6 @@ include_once 'vendor/autoload.php';
 use WC_Order;
 
 use WoocommercePlugin\classes\WC_Plugin_Gateway;
-// require_once 'classes/WC_Plugin_Gateway.php';
 
 use Dotenv\Dotenv;
 

@@ -166,7 +166,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         </fieldset>
 <?php
     }
-    
+
 
     public function receipt_page($order_id)
     {
@@ -185,8 +185,19 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             Logger::log("Doble Validación Desactivada / " . $order->get_status());
         }
 
-        echo '<p>' . __('Gracias! - Tu orden ahora está pendiente de pago. Deberías ser redirigido automáticamente a Web pay.') . '</p>';
+        echo '<p>' . __('Gracias! - Tu orden ahora está pendiente de pago. Deberías ser redirigido automáticamente a Web pay en 5 segundos.') . '</p>';
         echo $this->generate_transaction_form($order_id);
+        // print meta data _url_payment
+        $url_payment = get_post_meta($order_id, '_url_payment', true);
+
+        echo '<p>Si no eres redirigido automáticamente, haz click en el siguiente botón:</p>';
+        echo '<a href="' . $url_payment . '" class="button alt" id="submit_payment_form">' . __('Pagar', 'woocommerce') . '</a>';
+
+        echo "<script>
+                setTimeout(function(){
+                    window.location.href = '" . $url_payment . "';
+                }, 5000); // Redirige después de 5 segundos
+            </script>";
     }
 
     public function generate_transaction_form($order_id)
@@ -233,7 +244,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             $cadenaProductos .= $nombre_producto . ' (Cantidad: ' . $cantidad . '), ';
         }
         $cadenaProductos = rtrim($cadenaProductos, ', ');
-        
+
         // get input by custom payment fields
 
 
@@ -306,7 +317,9 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         $transaction->setToken($this->token_secret);
         $res = $transaction->initTransaction($new_data);
         error_log("Respuesta de Swipe: " . json_encode($res));
-        sleep(3);
-        wp_redirect($res, 301);
+        // add res url to meta data
+        add_post_meta($order_id, '_url_payment', $res, true);
+        // sleep(3);
+        // wp_redirect($res, 301);
     }
 }

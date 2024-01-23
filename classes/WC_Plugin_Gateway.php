@@ -65,6 +65,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         add_action('woocommerce_api_' . strtolower(get_class($this)), array($this, 'webhook'));
         // You can also register a webhook here
         // add_action( 'woocommerce_api_{webhook name}', array( $this, 'webhook' ) );
+        add_action('woocommerce_thankyou_' . $this->id, array($this, 'plugin_thankyou_page'));
     }
 
     /**
@@ -319,7 +320,18 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         error_log("Respuesta de Swipe: " . json_encode($res));
         // add res url to meta data
         add_post_meta($order_id, '_url_payment', $res, true);
-        // sleep(3);
-        // wp_redirect($res, 301);
+    }
+
+    public function plugin_thankyou_page($order_id){
+        Logger::log("Entrando a Pedido Recibido de $order_id");
+        error_log("Entrando a Pedido Recibido de $order_id");
+        $order = new WC_Order($order_id);
+
+        if ($order->get_status() === 'processing' || $order->get_status() === 'completed') {
+            include(plugin_dir_path(__FILE__) . '../templates/order_recibida.php');
+        } else {
+            $order_id_mall = get_post_meta($order_id, "_reference", true);
+            include(plugin_dir_path(__FILE__) . '../templates/orden_fallida.php');
+        }
     }
 }

@@ -1,0 +1,24 @@
+{
+    "name": "fabia/payment-plugin-woocommerce",
+    "description": "Plugin de pago para woocommerce",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "WoocommercePlugin\\classes\\": "classes/"
+        }
+    },
+    "authors": [
+        {
+            "name": "fabian pacheco",
+            "email": "fabian.pacheco@haulmer.com"
+        }
+    ],
+    "require": {
+        "ctala/transaccion-default": "V0.1.12.3",
+        "pacheco/swipe-woocommerce-php-sdk": "^1.0.0",
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "require-dev": {
+        "php-stubs/woocommerce-stubs": "^8.5"
+    }
+}

@@ -30,7 +30,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
         $this->id = 'pluginid'; // id del plugin
         $this->icon = ''; // url del icono(si hubiera)
-        $this->has_fields = true; // si necesita campos de pago
+        $this->has_fields = false; // si necesita campos de pago
         $this->method_title = 'Swipe Payment Gateway';
         $this->method_description = 'Payment plugin gateway for Woocommerce'; // will be displayed on the options page
         $this->notify_url = WC()->api_request_url('WC_Plugin_Gateway'); // esta es la url que se llama cuando se hace el pago, pero no se usa, o si?
@@ -146,27 +146,6 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             'result' => 'success',
             'redirect' => $order->get_checkout_payment_url(true)
         );
-    }
-
-    /**
-     * You will need it if you want your custom credit card form, Step 4 is about it
-     */
-    public function payment_fields()
-    {
-        if ($this->description) {
-            echo wpautop(wptexturize($this->description));
-        }
-?>
-        <fieldset>
-            <p class="form-row form-row-wide">
-                <label for="payment_method_<?php echo $this->id; ?>_input">
-                    <?php echo __('Ingrese Rut(XXXXXXXX-X)', ''); ?>
-                </label>
-                <input id="payment_method_<?php echo $this->id; ?>_input" type="text" class="input-text" name="payment_method_<?php echo $this->id; ?>_input" />
-            </p>
-            <div class="clear"></div>
-        </fieldset>
-<?php
     }
     
 

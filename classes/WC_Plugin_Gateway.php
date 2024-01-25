@@ -4,10 +4,12 @@ namespace WoocommercePlugin\classes;
 
 use WC_Order;
 use WoocommercePlugin\classes\Logger;
+use WoocommercePlugin\helpers\RutValidator;
 
 use Swipe\lib\Request;
 use Swipe\lib\Response;
 use Swipe\lib\Transaction;
+
 
 /** 
  * Esta clase es la encargada de crear el gateway de pago
@@ -21,6 +23,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
     public $token_secret;
     public $environment;
     public $notify_url;
+    public $rut_comercio;
 
     /**
      * Class constructor, more about it in Step 3
@@ -52,12 +55,18 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
         $this->environment = $this->get_option('ambiente');
 
-        $this->token_service = $this->get_option('token_service');
-        $this->token_secret = $this->get_option('token_secret');
+        $this->rut_comercio = $this->get_option('rut');
 
         $this->enabled = $this->get_option('enabled');
 
-
+        $validator = new RutValidator();
+        //validate rut, if true call update action to save admin options
+        if ($validator->validate($this->rut_comercio)) {
+            add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));  
+        }else{
+            // show error message in admin
+            add_action('admin_notices', array($this, 'show_rut_error_message'));
+        }
 
 
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
@@ -106,24 +115,21 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
                 'description' => 'mensaje que se muestra en la pagina de pago',
                 'default'     => 'Paga con tarjetas de crédito, débito y prepago a través de Webpay Plus',
             ),
-            'token_service' => array(
-                'title' => "ID de Cuenta",
-                'type' => 'text',
-                'description' => "Ingresa el Account ID de Swipe",
-                'default' => "",
-            ),
-            'token_secret' => array(
-                'title' => "Llave Secreta",
-                'type' => 'text',
-                'description' => "Ingresa la Secret Key de Swipe",
-                'default' => "",
-            ),
             'redirect' => array(
                 'title' => __(''),
                 'type' => 'hidden',
                 'label' => __('Si / No'),
                 'default' => 'yes'
-            )
+            ),
+            'rut' => array(
+                'title' => __('Rut Comercio', 'woocommerce'),
+                'type' => 'text',
+                'description' => 'El rut es necesario para poder emitir las keys de acceso a los servicios de pago',
+                'label' => __('Rut de la tienda', 'woocommerce'),
+                'default' => '',
+                'desc_tip' => true,
+                'placeholder' => '12345678-9'
+            ),
         );
     }
 
@@ -169,6 +175,40 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         echo '<p>' . __('Gracias! - Tu orden ahora está pendiente de pago. Deberías ser redirigido automáticamente a Web pay.') . '</p>';
         echo $this->generate_transaction_form($order_id);
     }
+
+    public function get_secret_keys($rut) {
+        $url = $_ENV["URL_SK"] . $rut;
+        
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json')); // Asegurar que se espera un JSON
+    
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE); // Obtener el código de respuesta HTTP
+    
+        if (curl_errno($ch)) {
+            // Manejo del error de cURL
+            curl_close($ch);
+            return 'Error en cURL: ' . curl_error($ch);
+        } else if ($httpCode != 200) {
+            // Manejo de otros códigos HTTP que no sean 200 OK
+            curl_close($ch);
+            return 'Error HTTP: ' . $httpCode;
+        }
+    
+        curl_close($ch);
+    
+        $decodedResponse = json_decode($response, true);
+    
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            // Error al decodificar JSON
+            return 'Error decodificando JSON: ' . json_last_error_msg();
+        }
+    
+        return $decodedResponse; // Retorna la respuesta decodificada
+    }
+    
+    
 
     public function generate_transaction_form($order_id)
     {
@@ -276,6 +316,11 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             "x_url_complete" => $this->notify_url
         );
 
+        $secret_keys = $this->get_secret_keys($this->rut_comercio);
+
+        $this->token_secret = $secret_keys['secret_key'];
+        $this->token_service = $secret_keys['account_id'];
+
         $new_data = array(
             "platform" => "woocommerce",
             "paymentMethod" => "webpay",
@@ -290,15 +335,16 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             "x_reference" => $order_id,
             "x_shop_country" => !empty($shop_country) ? $shop_country : 'CL',
             "x_shop_name" => $nombreSitio,
-            "x_url_callback" => "https://dev-pcihaulmer.azure-api.net/internal/v1/swipe",
+            "x_url_callback" => $_ENV['URL_CALLBACK'],
             "x_url_cancel" => $this->notify_url,
             "x_url_complete" => $this->notify_url,
             "secret" => $_ENV['SECRET'],
             "dte_type" => 48
         );
+
         logger::log("Datos enviados a Swipe: " . json_encode($new_data));
-        error_log("Token secret: " . $this->token_secret);
-        error_log("Token service: " . $this->token_service);
+        error_log("rut comercio: " . $this->rut_comercio);
+        
 
         $transaction = new Transaction();
         $transaction->environment =  $this->environment;
@@ -308,5 +354,11 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         // set time out to 3 seconds before redirect to $response
         sleep(3);
         wp_redirect($res, 301);
+    }
+
+    public function show_rut_error_message()
+    {
+        $message = "El rut ingresado no es válido, por favor ingrese un rut válido";
+        echo "<div class=\"error\"><p>$message</p></div>";
     }
 }

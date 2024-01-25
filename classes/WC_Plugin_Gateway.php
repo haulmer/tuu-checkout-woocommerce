@@ -106,24 +106,21 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
                 'description' => 'mensaje que se muestra en la pagina de pago',
                 'default'     => 'Paga con tarjetas de crédito, débito y prepago a través de Webpay Plus',
             ),
-            'token_service' => array(
-                'title' => "ID de Cuenta",
-                'type' => 'text',
-                'description' => "Ingresa el Account ID de Swipe",
-                'default' => "",
-            ),
-            'token_secret' => array(
-                'title' => "Llave Secreta",
-                'type' => 'text',
-                'description' => "Ingresa la Secret Key de Swipe",
-                'default' => "",
-            ),
             'redirect' => array(
                 'title' => __(''),
                 'type' => 'hidden',
                 'label' => __('Si / No'),
                 'default' => 'yes'
-            )
+            ),
+            'rut' => array(
+                'title' => __('Rut Comercio', 'woocommerce'),
+                'type' => 'text',
+                'description' => 'El rut es necesario para poder emitir las keys de acceso a los servicios de pago',
+                'label' => __('Rut de la tienda', 'woocommerce'),
+                'default' => '',
+                'desc_tip' => true,
+                'placeholder' => '12345678-9'
+            ),
         );
     }
 

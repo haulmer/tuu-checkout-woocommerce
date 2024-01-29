@@ -23,15 +23,18 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
     public $notify_url;
     public $rut_comercio;
 
+    public $icon_dir;
+
     /**
      * Class constructor, more about it in Step 3
      */
     public function __construct()
     {
+        $this->icon_dir = plugin_dir_url(__FILE__) . '../assets/images/Logo-tuu-azul.png';
 
         $this->id = 'pluginid'; // id del plugin
         // $this->icon = ''; // url del icono(si hubiera)
-        $this->icon = WP_PLUGIN_URL . "/" . plugin_basename(dirname(__FILE__)) . '/../assets/images/Logo-tuu-azul.svg';
+        $this->icon = apply_filters('woocommerce_gateway_icon', $this->icon_dir); // url del icono(si hubiera)
         $this->has_fields = false; // si necesita campos de pago
         $this->method_title = 'TUU Checkout Pago Online';
         $this->method_description = 'Recibe pagos con tarjeta en tu tienda con la pasarela de pagos más conveniente.'; // will be displayed on the options page
@@ -60,24 +63,35 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
         $this->enabled = $this->get_option('enabled');
 
-        $validator = new RutValidator();
-        //validate rut, if true call update action to save admin options
-        if ($validator->validate($this->rut_comercio)) {
-            add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));  
-        }else{
-            // show error message in admin
-            add_action('admin_notices', array($this, 'show_rut_error_message'));
+        if ($this->rut_comercio != "") {
+            $validator = new RutValidator();
+            //validate rut, if true call update action to save admin options
+            if ($validator->validate($this->rut_comercio)) {
+                add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
+            } else {
+                // show error message in admin
+                add_action('admin_notices', array($this, 'show_rut_error_message'));
+            }
         }
 
+        add_filter('woocommerce_gateway_icon', array($this, 'set_icon'), 10, 2);
 
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
         // This action hook saves the settings
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
 
-        add_action('woocommerce_api_' . strtolower(get_class($this)), array($this, 'webhook'));
         // You can also register a webhook here
         // add_action( 'woocommerce_api_{webhook name}', array( $this, 'webhook' ) );
         add_action('woocommerce_thankyou_' . $this->id, array($this, 'plugin_thankyou_page'));
+        // add_action('woocommerce_api_wc_plugin_gateway', array($this, 'check_ipn_response'));
+    }
+
+    public function set_icon($icon, $id)
+    {
+        if ($id === $this->id) {
+            $icon = '<img src="' . $this->icon_dir . '" alt="TUU Checkout" width="200" height="100" style="display: block; margin: 0 auto; vertical-align: baseline;" />';
+        }
+        return $icon;
     }
 
     /**
@@ -146,10 +160,36 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         $order = new WC_Order($order_id);
 
         // Mark as on-hold (we're awaiting the cheque)
-        // $order->update_status('on-hold', __('Awaiting cheque payment', 'woocommerce'));
+        $order->update_status('on-hold', __('Awaiting cheque payment', 'woocommerce'));
 
         // Remove cart
-        // $woocommerce->cart->empty_cart();
+        $woocommerce->cart->empty_cart();
+
+        // verify is dont exist other order with same token
+        $token_tienda = get_post_meta($order_id, "_token_tienda", true);
+
+        $args = array(
+            'post_type' => 'shop_order',
+            'meta_query' => array(
+                array(
+                    'key' => '_token_tienda',
+                    'value' => $token_tienda,
+                    'compare' => '='
+                )
+            )
+        );
+
+        $query = new \WP_Query($args);
+        $posts = $query->posts;
+
+        if (count($posts) > 1) {
+            Logger::log("Ya existe una orden con el mismo token, se cancela la orden actual");
+            $order->update_status('cancelled', __('Orden cancelada por duplicidad de token', 'woocommerce'));
+            return false;
+        }
+
+        // Reduce stock levels
+        $order->reduce_order_stock();
 
         // Return thankyou redirect
         return array(
@@ -157,7 +197,17 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             'redirect' => $order->get_checkout_payment_url(true)
         );
     }
-    
+
+    public function check_ipn_response()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            Logger::log("Entrando a check_ipn_response");
+            error_log("Entrando a check_ipn_response");
+            $data = $_GET;
+            error_log("Datos recibidos: " . json_encode($data));
+        }
+    }
+
 
     public function receipt_page($order_id)
     {
@@ -191,16 +241,17 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             </script>";
     }
 
-    public function get_secret_keys($rut) {
+    public function get_secret_keys($rut)
+    {
         $url = $_ENV["URL_SK"] . $rut;
-        
+
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json')); // Asegurar que se espera un JSON
-    
+
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE); // Obtener el código de respuesta HTTP
-    
+
         if (curl_errno($ch)) {
             // Manejo del error de cURL
             curl_close($ch);
@@ -210,20 +261,20 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             curl_close($ch);
             return 'Error HTTP: ' . $httpCode;
         }
-    
+
         curl_close($ch);
-    
+
         $decodedResponse = json_decode($response, true);
-    
+
         if (json_last_error() !== JSON_ERROR_NONE) {
             // Error al decodificar JSON
             return 'Error decodificando JSON: ' . json_last_error_msg();
         }
-    
+
         return $decodedResponse; // Retorna la respuesta decodificada
     }
-    
-    
+
+
 
     public function generate_transaction_form($order_id)
     {
@@ -341,7 +392,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
         logger::log("Datos enviados a Swipe: " . json_encode($new_data));
         error_log("rut comercio: " . $this->rut_comercio);
-        
+
 
         $transaction = new Transaction();
         $transaction->environment =  $this->environment;
@@ -352,7 +403,8 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         add_post_meta($order_id, '_url_payment', $res, true);
     }
 
-    public function plugin_thankyou_page($order_id){
+    public function plugin_thankyou_page($order_id)
+    {
         Logger::log("Entrando a Pedido Recibido de $order_id");
         error_log("Entrando a Pedido Recibido de $order_id");
         $order = new WC_Order($order_id);
@@ -368,6 +420,6 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
     public function show_rut_error_message()
     {
         $message = "El rut ingresado no es válido, por favor ingrese un rut válido";
-        echo '<div class="error is-dismisible"><p>$message</p></div>';
+        echo '<div class="error is-dismissible"><p>$message</p></div>';
     }
 }

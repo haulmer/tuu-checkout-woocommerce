@@ -32,10 +32,11 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
     {
 
         $this->id = 'pluginid'; // id del plugin
-        $this->icon = ''; // url del icono(si hubiera)
+        // $this->icon = ''; // url del icono(si hubiera)
+        $this->icon = WP_PLUGIN_URL . "/" . plugin_basename(dirname(__FILE__)) . '/../assets/images/Logo-tuu-azul.svg';
         $this->has_fields = false; // si necesita campos de pago
-        $this->method_title = 'Swipe Payment Gateway';
-        $this->method_description = 'Payment plugin gateway for Woocommerce'; // will be displayed on the options page
+        $this->method_title = 'TUU Checkout Pago Online';
+        $this->method_description = 'Recibe pagos con tarjeta en tu tienda con la pasarela de pagos más conveniente.'; // will be displayed on the options page
         $this->notify_url = WC()->api_request_url('WC_Plugin_Gateway'); // esta es la url que se llama cuando se hace el pago, pero no se usa, o si?
 
         // gateways can support subscriptions, refunds, saved payment methods,
@@ -50,9 +51,11 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         // Load the settings.
         $this->init_settings();
 
-        $this->title = __('Swipe Payment Gateway', 'woocommerce plugin');
-        $this->description = $this->get_option('description');
-
+        // $this->title = $this->get_option('title');
+        // $this->description = $this->get_option('description');
+        $this->title = "TUU Checkout";
+        $this->description = "Paga con tarjetas de débito, crédito y prepago.";
+        
         $this->environment = $this->get_option('ambiente');
 
         $this->rut_comercio = $this->get_option('rut');
@@ -103,17 +106,19 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
                 )
             ),
             'title' => array(
-                'title'       => 'Title',
+                'title'       => 'Titulo',
+                'value'       => 'TUU Checkout',
                 'type'        => 'text',
-                'description' => 'Woocommerce plugin Gateway',
-                'default'     => 'Swipe Payment Gateway',
-                'desc_tip'    => true,
+                'default'     => 'TUU Checkout',
+                "custom_attributes" => array("readonly" => "readonly")
             ),
             'description' => array(
-                'title'       => 'Description',
+                'title'       => 'Descripción',
                 'type'        => 'textarea',
-                'description' => 'mensaje que se muestra en la pagina de pago',
-                'default'     => 'Paga con tarjetas de crédito, débito y prepago a través de Webpay Plus',
+                'value'       => 'Paga con tarjetas de débito, crédito y prepago.',
+                'default'     => 'Paga con tarjetas de débito, crédito y prepago.',
+                "custom_attributes" => array("readonly" => "readonly")
+
             ),
             'redirect' => array(
                 'title' => __(''),
@@ -359,6 +364,6 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
     public function show_rut_error_message()
     {
         $message = "El rut ingresado no es válido, por favor ingrese un rut válido";
-        echo "<div class=\"error\"><p>$message</p></div>";
+        echo '<div class="error is-dismisible"><p>$message</p></div>';
     }
 }

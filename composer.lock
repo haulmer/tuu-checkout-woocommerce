@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "de1f661c469fa94be09c8c2f6a72107e",
+    "content-hash": "9611be1321cfc61be893390a25945ec1",
     "packages": [
         {
             "name": "ctala/transaccion-default",
@@ -111,16 +111,16 @@
         },
         {
             "name": "pacheco/swipe-woocommerce-php-sdk",
-            "version": "v1.0.0",
+            "version": "v1.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/F4bian-pacheco/Swipe-Wocommerce-php-sdk.git",
-                "reference": "9873263651a14aa0b4c7d58510d03f90d08cfe4d"
+                "reference": "5498c03994cdef4051e69dc1ffaaadbfec300308"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/F4bian-pacheco/Swipe-Wocommerce-php-sdk/zipball/9873263651a14aa0b4c7d58510d03f90d08cfe4d",
-                "reference": "9873263651a14aa0b4c7d58510d03f90d08cfe4d",
+                "url": "https://api.github.com/repos/F4bian-pacheco/Swipe-Wocommerce-php-sdk/zipball/5498c03994cdef4051e69dc1ffaaadbfec300308",
+                "reference": "5498c03994cdef4051e69dc1ffaaadbfec300308",
                 "shasum": ""
             },
             "type": "library",
@@ -139,9 +139,9 @@
             "description": "sdk con metodos y clases necesarios para las transacciones",
             "support": {
                 "issues": "https://github.com/F4bian-pacheco/Swipe-Wocommerce-php-sdk/issues",
-                "source": "https://github.com/F4bian-pacheco/Swipe-Wocommerce-php-sdk/tree/v1.0.0"
+                "source": "https://github.com/F4bian-pacheco/Swipe-Wocommerce-php-sdk/tree/v1.0.1"
             },
-            "time": "2024-01-23T13:38:09+00:00"
+            "time": "2024-01-24T13:16:23+00:00"
         },
         {
             "name": "phpoption/phpoption",

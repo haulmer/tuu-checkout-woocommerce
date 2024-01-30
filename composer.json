@@ -15,7 +15,6 @@
         }
     ],
     "require": {
-        "ctala/transaccion-default": "V0.1.12.3",
         "pacheco/swipe-woocommerce-php-sdk": "^1.0.1",
         "vlucas/phpdotenv": "^5.6"
     }

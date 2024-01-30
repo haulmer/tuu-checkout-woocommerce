@@ -32,14 +32,15 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
     {
         $this->icon_dir = plugin_dir_url(__FILE__) . '../assets/images/Logo-tuu-azul.png';
 
-        $this->id = 'pluginid'; // id del plugin
+        $this->id = 'plugin_gateway'; // id del plugin
         // $this->icon = ''; // url del icono(si hubiera)
         $this->icon = apply_filters('woocommerce_gateway_icon', $this->icon_dir); // url del icono(si hubiera)
         $this->has_fields = false; // si necesita campos de pago
         $this->method_title = 'TUU Checkout Pago Online';
         $this->method_description = 'Recibe pagos con tarjeta en tu tienda con la pasarela de pagos más conveniente.'; // will be displayed on the options page
-        $this->notify_url = WC()->api_request_url('WC_Plugin_Gateway'); // esta es la url que se llama cuando se hace el pago, pero no se usa, o si?
-
+        $this->notify_url = WC()->api_request_url('plugin_gateway'); // esta es la url que se llama cuando se hace el pago, pero no se usa, o si?
+        // $this->notify_url = str_replace('https:', 'http:', add_query_arg('wc-api', 'WC_Plugin_Gateway', home_url('/'))); 
+        // $this->notify_url = $this->get_return_url(); 
         // gateways can support subscriptions, refunds, saved payment methods,
         // but we have simple payments
         $this->supports = array(
@@ -56,7 +57,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         // $this->description = $this->get_option('description');
         $this->title = "TUU Checkout";
         $this->description = "Paga con tarjetas de débito, crédito y prepago.";
-        
+
         $this->environment = $this->get_option('ambiente');
 
         $this->rut_comercio = $this->get_option('rut');
@@ -83,12 +84,13 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         // You can also register a webhook here
         // add_action( 'woocommerce_api_{webhook name}', array( $this, 'webhook' ) );
         add_action('woocommerce_thankyou_' . $this->id, array($this, 'plugin_thankyou_page'));
-        // add_action('woocommerce_api_wc_plugin_gateway', array($this, 'check_ipn_response'));
+        // add_action('woocommerce_api_wc_' . $this->id, array($this, 'check_ipn_response'));
+
     }
 
-    public function set_icon($icon, $id)
+    public function set_icon($icon, $id = null)
     {
-        if ($id === $this->id) {
+        if ($id === null || $id === $this->id) {
             $icon = '<img src="' . $this->icon_dir . '" alt="TUU Checkout" width="200" height="100" style="display: block; margin: 0 auto; vertical-align: baseline;" />';
         }
         return $icon;
@@ -160,10 +162,10 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         $order = new WC_Order($order_id);
 
         // Mark as on-hold (we're awaiting the cheque)
-        $order->update_status('on-hold', __('Awaiting cheque payment', 'woocommerce'));
+        // $order->update_status('on-hold', __('Awaiting cheque payment', 'woocommerce'));
 
         // Remove cart
-        $woocommerce->cart->empty_cart();
+        // $woocommerce->cart->empty_cart();
 
         // verify is dont exist other order with same token
         $token_tienda = get_post_meta($order_id, "_token_tienda", true);
@@ -189,7 +191,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         }
 
         // Reduce stock levels
-        $order->reduce_order_stock();
+        // $order->reduce_order_stock();
 
         // Return thankyou redirect
         return array(
@@ -200,12 +202,9 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
     public function check_ipn_response()
     {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            Logger::log("Entrando a check_ipn_response");
-            error_log("Entrando a check_ipn_response");
-            $data = $_GET;
-            error_log("Datos recibidos: " . json_encode($data));
-        }
+        header('HTTP/1.1 200 OK');
+        error_log("Entrando a check_ipn_response");
+        die();
     }
 
 
@@ -226,8 +225,10 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             Logger::log("Doble Validación Desactivada / " . $order->get_status());
         }
 
+        $this->generate_transaction_form($order_id);
+        // update status order to processing
+        // $order->update_status('processing', __('Orden recibida, pendiente de pago.', 'woocommerce'));
         echo '<p>' . __('Gracias! - Tu orden ahora está pendiente de pago. Deberías ser redirigido automáticamente a Web pay en 5 segundos.') . '</p>';
-        echo $this->generate_transaction_form($order_id);
         // print meta data _url_payment
         $url_payment = get_post_meta($order_id, '_url_payment', true);
 
@@ -383,15 +384,17 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             "x_reference" => $order_id,
             "x_shop_country" => !empty($shop_country) ? $shop_country : 'CL',
             "x_shop_name" => $nombreSitio,
-            "x_url_callback" => $_ENV['URL_CALLBACK'],
-            "x_url_cancel" => $this->notify_url,
-            "x_url_complete" => $this->notify_url,
+            "x_url_callback" => $this->get_return_url($order),
+            "x_url_cancel" => wc_get_cart_url(),
+            "x_url_complete" => $this->get_return_url($order),
             "secret" => $_ENV['SECRET'],
             "dte_type" => 48
         );
 
         logger::log("Datos enviados a Swipe: " . json_encode($new_data));
         error_log("rut comercio: " . $this->rut_comercio);
+        error_log("url blog: " . get_bloginfo('url') . "/wc-api/" . $this->id . "?order_id=" . $order_id);
+        // error_log("url cancel: " . $this->get_cancel_order_url_raw());
 
 
         $transaction = new Transaction();
@@ -401,6 +404,8 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         error_log("Respuesta de Swipe: " . json_encode($res));
         // add res url to meta data
         add_post_meta($order_id, '_url_payment', $res, true);
+        // redirect to url payment
+        // wp_redirect($res);
     }
 
     public function plugin_thankyou_page($order_id)
@@ -412,7 +417,6 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         if ($order->get_status() === 'processing' || $order->get_status() === 'completed') {
             include(plugin_dir_path(__FILE__) . '../templates/order_recibida.php');
         } else {
-            $order_id_mall = get_post_meta($order_id, "_reference", true);
             include(plugin_dir_path(__FILE__) . '../templates/orden_fallida.php');
         }
     }

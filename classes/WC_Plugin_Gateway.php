@@ -32,13 +32,13 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
     {
         $this->icon_dir = plugin_dir_url(__FILE__) . '../assets/images/Logo-tuu-azul.png';
 
-        $this->id = 'plugin_gateway'; // id del plugin
+        $this->id = 'wc_plugin_gateway'; // id del plugin
         // $this->icon = ''; // url del icono(si hubiera)
         $this->icon = apply_filters('woocommerce_gateway_icon', $this->icon_dir); // url del icono(si hubiera)
         $this->has_fields = false; // si necesita campos de pago
         $this->method_title = 'TUU Checkout Pago Online';
         $this->method_description = 'Recibe pagos con tarjeta en tu tienda con la pasarela de pagos más conveniente.'; // will be displayed on the options page
-        $this->notify_url = WC()->api_request_url('plugin_gateway'); // esta es la url que se llama cuando se hace el pago, pero no se usa, o si?
+        $this->notify_url = WC()->api_request_url('WC_Plugin_Gateway'); // esta es la url que se llama cuando se hace el pago, pero no se usa, o si?
         // $this->notify_url = str_replace('https:', 'http:', add_query_arg('wc-api', 'WC_Plugin_Gateway', home_url('/'))); 
         // $this->notify_url = $this->get_return_url(); 
         // gateways can support subscriptions, refunds, saved payment methods,
@@ -83,8 +83,10 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
         // You can also register a webhook here
         // add_action( 'woocommerce_api_{webhook name}', array( $this, 'webhook' ) );
-        add_action('woocommerce_thankyou_' . $this->id, array($this, 'plugin_thankyou_page'));
-        // add_action('woocommerce_api_wc_' . $this->id, array($this, 'check_ipn_response'));
+        // add_action('woocommerce_thankyou_' . $this->id, array($this, 'plugin_thankyou_page'));
+        // add_action('woocommerce_api_' . strtolower(get_class($this)), array(&$this, 'handle_callback'));
+        add_action("woocommerce_checkout_order_review", array($this, "checkout_order"), 10, 1);
+        add_action("woocommerce_thankyou", array($this, "checkout_order"), 10);
 
     }
 
@@ -94,6 +96,57 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             $icon = '<img src="' . $this->icon_dir . '" alt="TUU Checkout" width="200" height="100" style="display: block; margin: 0 auto; vertical-align: baseline;" />';
         }
         return $icon;
+    }
+
+    public function checkout_order()
+    {
+        error_log("Entrando a checkout_order");
+        if(isset($_GET['x_result']) and $_GET['x_result'] == 'failed'){
+            error_log("Pago fallido o cancelado");
+            $order_id = $_GET['x_reference'] ?? null;
+            $order = new WC_Order($order_id);
+            $order->update_status('cancelled', __('Pago cancelado', 'woocommerce'));
+            $order->add_order_note(
+                __(
+                    'Pago fallido o cancelado por el usuario',
+                    'woocommerce'
+                )
+            );
+            error_log("Orden cancelada, order_id: $order_id");
+            wc_add_notice(__('Pago fallido o cancelado por el usuario', 'woocommerce'), 'error');
+            // WC()->cart->empty_cart();
+            // wp_redirect(wc_get_checkout_url());
+            // exit;
+        }else if(isset($_GET['x_result']) and $_GET['x_result'] == 'completed'){
+            error_log("Pago completado");
+            $order_id = $_GET['x_reference'] ?? null;
+            $order = new WC_Order($order_id);
+            $order->update_status('completed', __('Pago completado', 'woocommerce'));
+            $order->add_order_note(
+                __(
+                    'Pago completado',
+                    'woocommerce'
+                )
+            );
+            error_log("Orden completada, order_id: $order_id");
+            wc_add_notice(__('Pago completado', 'woocommerce'), 'success');
+            WC()->cart->empty_cart();
+            // wp_redirect(wc_get_checkout_url());
+            // exit;
+            $url_home = get_home_url();
+            // setimeout para que se ejecute despues de 5 segundos
+            echo "<script>
+                setTimeout(function(){
+                    window.location.href = '" . $url_home . "';
+                }, 5000); // Redirige después de 5 segundos
+            </script>";
+        }else{
+            //TODO capturar pagos pendientes, verificar que sean del mismo token y usuario, luego mostrar un wc_add_notice que incluya los links hacia el pago pendiente
+            error_log("Pago pendiente");
+            //get order id from session
+            
+
+        }
     }
 
     /**
@@ -163,32 +216,11 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
         // Mark as on-hold (we're awaiting the cheque)
         // $order->update_status('on-hold', __('Awaiting cheque payment', 'woocommerce'));
-
-        // Remove cart
-        // $woocommerce->cart->empty_cart();
-
-        // verify is dont exist other order with same token
-        $token_tienda = get_post_meta($order_id, "_token_tienda", true);
-
-        $args = array(
-            'post_type' => 'shop_order',
-            'meta_query' => array(
-                array(
-                    'key' => '_token_tienda',
-                    'value' => $token_tienda,
-                    'compare' => '='
-                )
-            )
-        );
-
-        $query = new \WP_Query($args);
-        $posts = $query->posts;
-
-        if (count($posts) > 1) {
-            Logger::log("Ya existe una orden con el mismo token, se cancela la orden actual");
-            $order->update_status('cancelled', __('Orden cancelada por duplicidad de token', 'woocommerce'));
-            return false;
-        }
+        // save order_id in session
+        // WC()->session->set('order_id', $order_id);
+        //get order id from session
+        // $order_id = WC()->session->get('order_id');
+        
 
         // Reduce stock levels
         // $order->reduce_order_stock();
@@ -200,11 +232,10 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         );
     }
 
-    public function check_ipn_response()
+    public function handle_callback()
     {
         header('HTTP/1.1 200 OK');
-        error_log("Entrando a check_ipn_response");
-        die();
+        error_log("Entrando a callback");
     }
 
 
@@ -384,9 +415,9 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             "x_reference" => $order_id,
             "x_shop_country" => !empty($shop_country) ? $shop_country : 'CL',
             "x_shop_name" => $nombreSitio,
-            "x_url_callback" => $this->get_return_url($order),
-            "x_url_cancel" => wc_get_cart_url(),
-            "x_url_complete" => $this->get_return_url($order),
+            "x_url_callback" => $this->notify_url,
+            "x_url_cancel" => wc_get_checkout_url(),
+            "x_url_complete" => $this->get_return_url($order) . "&",
             "secret" => $_ENV['SECRET'],
             "dte_type" => 48
         );
@@ -424,6 +455,6 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
     public function show_rut_error_message()
     {
         $message = "El rut ingresado no es válido, por favor ingrese un rut válido";
-        echo '<div class="error is-dismissible"><p>$message</p></div>';
+        echo "<div class='error is-dismissible'><p>$message</p></div>";
     }
 }

@@ -4,9 +4,9 @@ namespace WoocommercePlugin;
 
 
 /*
-  Plugin Name: Woocommerce payment gateway for Swipe
-  Description: Plugin de pago para Woocommerce
-  Version:     1.0.1
+  Plugin Name: TUU Checkout Pago Online 
+  Description: Recibe pagos con tarjeta en tu tienda con la pasarela de pagos más conveniente.
+  Version:     1.0.2
   Author:      Fabian Pacheco
  */
 
@@ -61,11 +61,11 @@ function crear_nueva_pagina_checkout()
     if (!$pagina_existente) {
         if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
             $nueva_pagina = array(
-                'post_title' => 'Checkout Plugin Page',
-                'post_name' => 'checkout-plugin-page',
+                'post_title' => 'Tuu Checkout Page',
+                'post_name' => 'checkout-tuu-page',
                 'post_status' => 'publish',
                 'post_type' => 'page',
-                'post_slug' => 'checkout-plugin-page',
+                'post_slug' => 'checkout-tuu-page',
                 'post_author' => 1
             );
 

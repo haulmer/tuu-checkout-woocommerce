@@ -3,19 +3,16 @@
 namespace WoocommercePlugin\classes;
 
 use WC_Order;
-use WoocommercePlugin\classes\Logger;
 use WoocommercePlugin\helpers\RutValidator;
-
 use Swipe\lib\Transaction;
 
-
-/** 
+/**
  * Esta clase es la encargada de crear el gateway de pago
- * 
+ *
  *  @autor Fabian Pacheco
  */
 
-class WC_Plugin_Gateway extends \WC_Payment_Gateway
+class WCPluginGateway extends \WC_Payment_Gateway
 {
     public $token_service;
     public $token_secret;
@@ -30,12 +27,12 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
     {
         $this->icon_dir = plugin_dir_url(__FILE__) . '../assets/images/Logo-tuu-azul.png';
 
-        $this->id = 'wc_plugin_gateway';
+        $this->id = 'wcplugingateway';
         $this->icon = apply_filters('woocommerce_gateway_icon', $this->icon_dir);
         $this->has_fields = false;
         $this->method_title = 'TUU Checkout Pago Online';
         $this->method_description = 'Recibe pagos con tarjeta en tu tienda con la pasarela de pagos más conveniente.';
-        $this->notify_url = WC()->api_request_url('WC_Plugin_Gateway');
+        $this->notify_url = WC()->api_request_url('WCPluginGateway');
 
         $this->supports = array(
             'products'
@@ -58,26 +55,30 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             $validator = new RutValidator();
 
             if ($validator->validate($this->rut_comercio)) {
-                add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
+                add_action(
+                    'woocommerce_update_options_payment_gateways_' . $this->id,
+                    array($this, 'process_admin_options')
+                );
             } else {
-                add_action('admin_notices', array($this, 'show_rut_error_message'));
+                add_action('admin_notices', array($this, 'showRutErrorMessage'));
             }
         }
 
-        add_filter('woocommerce_gateway_icon', array($this, 'set_icon'), 10, 2);
+        add_filter('woocommerce_gateway_icon', array($this, 'setIcon'), 10, 2);
 
-        add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
+        add_action('woocommerce_receipt_' . $this->id, array($this, 'receiptPage'));
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
 
 
-        add_action("woocommerce_checkout_order_review", array($this, "checkout_order"), 10, 1);
-        add_action("woocommerce_thankyou", array($this, "thankyou_page_callback"), 10);
+        add_action("woocommerce_checkout_order_review", array($this, "checkoutOrder"), 10, 1);
+        add_action("woocommerce_thankyou", array($this, "thankyouPageCallback"), 10);
     }
 
-    public function set_icon($icon, $id = null)
+    public function setIcon($icon, $id = null)
     {
         if ($id === null || $id === $this->id) {
-            $icon = '<img src="' . $this->icon_dir . '" alt="TUU Checkout" width="200" height="100" style="display: block; margin: 0 auto; vertical-align: baseline;" />';
+            $icon = '<img src="' . $this->icon_dir . '" alt="TUU Checkout" width="200" height="100" 
+            style="display: block; margin: 0 auto; vertical-align: baseline;" />';
         }
         return $icon;
     }
@@ -140,8 +141,8 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
     }
 
     /*
-		 * Funcion necesaria para hacer el pago(crea el boton de pago)
-		 */
+         * Funcion necesaria para hacer el pago(crea el boton de pago)
+         */
     public function process_payment($order_id)
     {
         $order = new WC_Order($order_id);
@@ -154,17 +155,19 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         );
     }
 
-    public function receipt_page($order_id)
+    public function receiptPage($order_id)
     {
 
-        $url_res = $this->generate_transaction_form($order_id);
+        $url_res = $this->generateTransactionForm($order_id);
 
-        echo '<p>' . __('Gracias! - Tu orden ahora está pendiente de pago. Deberías ser redirigido automáticamente a Web pay en 5 segundos.') . '</p>';
+        echo '<p>' . __('Gracias! - Tu orden ahora está pendiente de pago. 
+        Deberías ser redirigido automáticamente a Web pay en 5 segundos.') . '</p>';
 
         $url_payment = get_post_meta($order_id, '_url_payment', true);
 
         echo '<p>Si no eres redirigido automáticamente, haz click en el siguiente botón:</p>';
-        echo '<a href="' . $url_payment . '" class="button alt" id="submit_payment_form">' . __('Pagar', 'woocommerce') . '</a>';
+        echo '<a href="' . $url_payment . '" class="button alt" id="submit_payment_form">'
+            . __('Pagar', 'woocommerce') . '</a>';
 
         echo "<script>
                 setTimeout(function(){
@@ -173,7 +176,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             </script>";
     }
 
-    public function get_secret_keys($rut)
+    public function getSecretKeys($rut)
     {
         $url = $_ENV["URL_SK"] . $rut;
 
@@ -187,7 +190,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         if (curl_errno($ch)) {
             curl_close($ch);
             return 'Error en cURL: ' . curl_error($ch);
-        } else if ($httpCode != 200) {
+        } elseif ($httpCode != 200) {
             curl_close($ch);
             return array('error' => true, 'message' => 'Error en la petición: ' . $httpCode);
         }
@@ -205,7 +208,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
 
 
-    public function generate_transaction_form($order_id)
+    public function generateTransactionForm($order_id)
     {
 
         $order = new WC_Order($order_id);
@@ -243,7 +246,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         $cadenaProductos = rtrim($cadenaProductos, ', ');
 
 
-        $secret_keys = $this->get_secret_keys($this->rut_comercio);
+        $secret_keys = $this->getSecretKeys($this->rut_comercio);
 
         if (isset($secret_keys['error']) and $secret_keys['error'] == true) {
             header('Refresh: 5; URL=' . get_home_url() . '/');
@@ -283,13 +286,13 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         return $res;
     }
 
-    public function show_rut_error_message()
+    public function showRutErrorMessage()
     {
         $message = "El rut ingresado no es válido, por favor ingrese un rut válido";
         echo "<div class='error is-dismissible'><p>$message</p></div>";
     }
 
-    public function checkout_order()
+    public function checkoutOrder()
     {
         if (isset($_GET['x_result']) and $_GET['x_result'] == 'failed') {
             $order_id = $_GET['x_reference'] ?? null;
@@ -314,14 +317,15 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         ));
         $ordenes_pendientes = array();
         foreach ($orders as $order) {
-            $res_url = $this->generate_transaction_form($order->get_id());
+            $res_url = $this->generateTransactionForm($order->get_id());
             $ordenes_pendientes[] = array(
                 'order_id' => $order->get_id(),
                 'url' => $res_url
             );
         }
         if (!empty($ordenes_pendientes)) {
-            $respuesta = "<p>Ya tienes ordenes pendientes de pago, si deseas pagar o cancelar una haz click en la orden correspondiente: ";
+            $respuesta = "<p>Ya tienes ordenes pendientes de pago, 
+            si deseas pagar o cancelar una haz click en la orden correspondiente: ";
 
             foreach ($ordenes_pendientes as $orden) {
                 $respuesta .= "<a href='" . $orden['url'] . "'>Orden: " . $orden['order_id'] . "</a> ";
@@ -331,7 +335,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         }
     }
 
-    public function thankyou_page_callback()
+    public function thankyouPageCallback()
     {
         if (isset($_GET['x_result']) and $_GET['x_result'] == 'completed') {
             $order_id = $_GET['x_reference'] ?? null;

@@ -1,4 +1,5 @@
 <?php
+
 namespace WoocommercePlugin\helpers;
 
 class RutValidator
@@ -7,8 +8,7 @@ class RutValidator
     {
         // Remove any non-digit characters except 'k' or 'K'
         $rut = preg_replace('/[^0-9kK]/', '', $rut);
-
-        // Check if the RUT has a valid length (8-9 digits plus verification digit)
+// Check if the RUT has a valid length (8-9 digits plus verification digit)
         if (strlen($rut) < 8 || strlen($rut) > 9) {
             return false;
         }
@@ -16,8 +16,7 @@ class RutValidator
         // Separate the RUT and verification digit
         $rutNumber = substr($rut, 0, -1);
         $verificationDigit = strtoupper(substr($rut, -1));
-
-        // Calculate the verification digit
+// Calculate the verification digit
         $sum = 0;
         $multiplier = 2;
         for ($i = strlen($rutNumber) - 1; $i >= 0; $i--) {

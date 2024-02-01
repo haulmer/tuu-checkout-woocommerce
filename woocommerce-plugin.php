@@ -2,19 +2,18 @@
 
 namespace WoocommercePlugin;
 
-
 /*
-  Plugin Name: TUU Checkout Pago Online 
-  Description: Recibe pagos con tarjeta en tu tienda con la pasarela de pagos más conveniente.
-  Version:     1.0.2
-  Author:      Fabian Pacheco
+    Plugin Name: TUU Checkout Pago Online
+    Description: Recibe pagos con tarjeta en tu tienda con la pasarela de pagos más conveniente.
+    Version:     1.0.2
+    Author:      Fabian Pacheco
  */
 
 include_once 'vendor/autoload.php';
 
 use WC_Order;
 
-use WoocommercePlugin\classes\WC_Plugin_Gateway;
+use WoocommercePlugin\classes\WCPluginGateway;
 
 use Dotenv\Dotenv;
 
@@ -33,7 +32,7 @@ function plugin_init_gateway_class()
         return;
     }
 
-    class WC_Plugin_Gateway_Chile extends WC_Plugin_Gateway
+    class WCPluginGatewayChile extends WCPluginGateway
     {
     }
 }
@@ -44,7 +43,7 @@ function plugin_init_gateway_class()
 
 function plugin_add_gateway_class($gateways)
 {
-    $gateways[] = 'WoocommercePlugin\WC_Plugin_Gateway_Chile'; // your class name is here
+    $gateways[] = 'WoocommercePlugin\WCPluginGatewayChile'; // your class name is here
     return $gateways;
 }
 add_filter('woocommerce_payment_gateways', 'WoocommercePlugin\plugin_add_gateway_class');
@@ -118,14 +117,14 @@ function mostrar_mensaje_activacion_plugin()
         echo '<div class="notice notice-warning is-dismissible">
         <p>La página de checkout ya existe.</p>
     </div>';
-    update_option('checkout_plugin_page_exist', false);
+        update_option('checkout_plugin_page_exist', false);
     } else {
         if (get_option('checkout_plugin_page_created') == true) {
             echo '<div class="notice notice-success is-dismissible">
                     <p>Página de checkout creada exitosamente.</p>
                 </div>';
                 update_option('checkout_plugin_page_exist', true);
-        }else{
+        } else {
             echo '<div></div>';
         }
     }

@@ -431,7 +431,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             echo "<script>
                 setTimeout(function(){
                     window.location.href = '" . $url_home . "';
-                }, 5000); // Redirige después de 5 segundos
+                }, 7000); // Redirige después de 7 segundos
             </script>";
         }
     }

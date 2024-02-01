@@ -25,9 +25,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
     public $icon_dir;
 
-    /**
-     * Class constructor, more about it in Step 3
-     */
+
     public function __construct()
     {
         $this->icon_dir = plugin_dir_url(__FILE__) . '../assets/images/Logo-tuu-azul.png';
@@ -37,20 +35,17 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         $this->icon = apply_filters('woocommerce_gateway_icon', $this->icon_dir); // url del icono(si hubiera)
         $this->has_fields = false; // si necesita campos de pago
         $this->method_title = 'TUU Checkout Pago Online';
-        $this->method_description = 'Recibe pagos con tarjeta en tu tienda con la pasarela de pagos más conveniente.'; // will be displayed on the options page
+        $this->method_description = 'Recibe pagos con tarjeta en tu tienda con la pasarela de pagos más conveniente.';
         $this->notify_url = WC()->api_request_url('WC_Plugin_Gateway'); // esta es la url que se llama cuando se hace el pago, pero no se usa, o si?
-        // $this->notify_url = str_replace('https:', 'http:', add_query_arg('wc-api', 'WC_Plugin_Gateway', home_url('/'))); 
-        // $this->notify_url = $this->get_return_url(); 
-        // gateways can support subscriptions, refunds, saved payment methods,
-        // but we have simple payments
+        
         $this->supports = array(
             'products'
         );
 
-        // Method with all the options fields
+        // Metodo con todos los parametros de configuracion
         $this->init_form_fields();
 
-        // Load the settings.
+        // carga los valores de configuracion
         $this->init_settings();
 
         // $this->title = $this->get_option('title');
@@ -66,11 +61,10 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
         if ($this->rut_comercio != "") {
             $validator = new RutValidator();
-            //validate rut, if true call update action to save admin options
+            
             if ($validator->validate($this->rut_comercio)) {
                 add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
             } else {
-                // show error message in admin
                 add_action('admin_notices', array($this, 'show_rut_error_message'));
             }
         }
@@ -81,10 +75,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         // This action hook saves the settings
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
 
-        // You can also register a webhook here
-        // add_action( 'woocommerce_api_{webhook name}', array( $this, 'webhook' ) );
-        // add_action('woocommerce_thankyou_' . $this->id, array($this, 'plugin_thankyou_page'));
-        // add_action('woocommerce_api_' . strtolower(get_class($this)), array(&$this, 'handle_callback'));
+
         add_action("woocommerce_checkout_order_review", array($this, "checkout_order"), 10, 1);
         add_action("woocommerce_thankyou", array($this, "thankyou_page_callback"), 10);
     }
@@ -98,7 +89,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
     }
 
     /**
-     * Plugin options, we deal with it in Step 3 too
+     * Opcciones de configuracion del plugin
      */
     public function init_form_fields()
     {
@@ -163,15 +154,8 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         Logger::log("iniciando el proceso de pago - " . $function_name, "info");
         $order = new WC_Order($order_id);
 
-        // Mark as on-hold (we're awaiting the cheque)
-        // $order->update_status('on-hold', __('Esperando procesar el pago', 'woocommerce'));
-
         // save order id in session
         WC()->session->set('order_id', $order_id);
-
-
-        // Reduce stock levels
-        // $order->reduce_order_stock();
 
         return array(
             'result' => 'success',
@@ -183,25 +167,24 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
     {
         $function_name = __FUNCTION__;
         Logger::log("pagina previa al pago - " . $function_name, "info");
-        $DOBLEVALIDACION = $this->get_option('doblevalidacion');
-        $order = new WC_Order($order_id);
-        if ($DOBLEVALIDACION === "yes") {
-            error_log("Doble Validación Activada / " . $order->status);
-            if ($order->status === 'processing' || $order->status === 'completed') {
-                Logger::log("ORDEN YA PAGADA (" . $order->get_status() . ") EXISTENTE " . $order_id);
-                // Por solicitud muestro página de fracaso.
-                //$this->paginaError($order_id);
-                return false;
-            }
-        } else {
-            Logger::log("Doble Validación Desactivada / " . $order->get_status());
-        }
+        // $DOBLEVALIDACION = $this->get_option('doblevalidacion');
+        // $order = new WC_Order($order_id);
+        // if ($DOBLEVALIDACION === "yes") {
+        //     error_log("Doble Validación Activada / " . $order->status);
+        //     if ($order->status === 'processing' || $order->status === 'completed') {
+        //         Logger::log("ORDEN YA PAGADA (" . $order->get_status() . ") EXISTENTE " . $order_id);
+        //         // Por solicitud muestro página de fracaso.
+        //         //$this->paginaError($order_id);
+        //         return false;
+        //     }
+        // } else {
+        //     Logger::log("Doble Validación Desactivada / " . $order->get_status());
+        // }
 
         $url_res = $this->generate_transaction_form($order_id);
-        // update status order to processing
-        // $order->update_status('processing', __('Orden recibida, pendiente de pago.', 'woocommerce'));
+
         echo '<p>' . __('Gracias! - Tu orden ahora está pendiente de pago. Deberías ser redirigido automáticamente a Web pay en 5 segundos.') . '</p>';
-        // print meta data _url_payment
+
         $url_payment = get_post_meta($order_id, '_url_payment', true);
 
         echo '<p>Si no eres redirigido automáticamente, haz click en el siguiente botón:</p>';
@@ -333,7 +316,6 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
         logger::log("Datos enviados a Swipe: " . json_encode($new_data));
         error_log("rut comercio: " . $this->rut_comercio);
-        error_log("url blog: " . get_bloginfo('url') . "/wc-api/" . $this->id . "?order_id=" . $order_id);
 
 
         $transaction = new Transaction();
@@ -341,7 +323,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         $transaction->setToken($this->token_secret);
         $res = $transaction->initTransaction($new_data);
         error_log("Respuesta de Swipe: " . json_encode($res));
-        // add res url to meta data
+        // add res url to meta data si fuera necesario usarlo fuera del flujo
         add_post_meta($order_id, '_url_payment', $res, true);
         return $res;
     }

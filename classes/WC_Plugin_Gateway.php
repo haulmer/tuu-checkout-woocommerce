@@ -30,26 +30,21 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
     {
         $this->icon_dir = plugin_dir_url(__FILE__) . '../assets/images/Logo-tuu-azul.png';
 
-        $this->id = 'wc_plugin_gateway'; // id del plugin
-        // $this->icon = ''; // url del icono(si hubiera)
-        $this->icon = apply_filters('woocommerce_gateway_icon', $this->icon_dir); // url del icono(si hubiera)
-        $this->has_fields = false; // si necesita campos de pago
+        $this->id = 'wc_plugin_gateway';
+        $this->icon = apply_filters('woocommerce_gateway_icon', $this->icon_dir);
+        $this->has_fields = false;
         $this->method_title = 'TUU Checkout Pago Online';
         $this->method_description = 'Recibe pagos con tarjeta en tu tienda con la pasarela de pagos más conveniente.';
-        $this->notify_url = WC()->api_request_url('WC_Plugin_Gateway'); // esta es la url que se llama cuando se hace el pago, pero no se usa, o si?
-        
+        $this->notify_url = WC()->api_request_url('WC_Plugin_Gateway');
+
         $this->supports = array(
             'products'
         );
 
-        // Metodo con todos los parametros de configuracion
         $this->init_form_fields();
 
-        // carga los valores de configuracion
         $this->init_settings();
 
-        // $this->title = $this->get_option('title');
-        // $this->description = $this->get_option('description');
         $this->title = "TUU Checkout";
         $this->description = "Paga con tarjetas de débito, crédito y prepago.";
 
@@ -61,7 +56,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
         if ($this->rut_comercio != "") {
             $validator = new RutValidator();
-            
+
             if ($validator->validate($this->rut_comercio)) {
                 add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
             } else {
@@ -72,7 +67,6 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         add_filter('woocommerce_gateway_icon', array($this, 'set_icon'), 10, 2);
 
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
-        // This action hook saves the settings
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
 
 
@@ -150,11 +144,8 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 		 */
     public function process_payment($order_id)
     {
-        $function_name = __FUNCTION__;
-        Logger::log("iniciando el proceso de pago - " . $function_name, "info");
         $order = new WC_Order($order_id);
 
-        // save order id in session
         WC()->session->set('order_id', $order_id);
 
         return array(
@@ -165,21 +156,6 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
     public function receipt_page($order_id)
     {
-        $function_name = __FUNCTION__;
-        Logger::log("pagina previa al pago - " . $function_name, "info");
-        // $DOBLEVALIDACION = $this->get_option('doblevalidacion');
-        // $order = new WC_Order($order_id);
-        // if ($DOBLEVALIDACION === "yes") {
-        //     error_log("Doble Validación Activada / " . $order->status);
-        //     if ($order->status === 'processing' || $order->status === 'completed') {
-        //         Logger::log("ORDEN YA PAGADA (" . $order->get_status() . ") EXISTENTE " . $order_id);
-        //         // Por solicitud muestro página de fracaso.
-        //         //$this->paginaError($order_id);
-        //         return false;
-        //     }
-        // } else {
-        //     Logger::log("Doble Validación Desactivada / " . $order->get_status());
-        // }
 
         $url_res = $this->generate_transaction_form($order_id);
 
@@ -203,17 +179,15 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json')); // Asegurar que se espera un JSON
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json'));
 
         $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE); // Obtener el código de respuesta HTTP
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
         if (curl_errno($ch)) {
-            // Manejo del error de cURL
             curl_close($ch);
             return 'Error en cURL: ' . curl_error($ch);
         } else if ($httpCode != 200) {
-            // Manejo de otros códigos HTTP que no sean 200 OK
             curl_close($ch);
             return array('error' => true, 'message' => 'Error en la petición: ' . $httpCode);
         }
@@ -223,19 +197,16 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
         $decodedResponse = json_decode($response, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            // Error al decodificar JSON
             return 'Error decodificando JSON: ' . json_last_error_msg();
         }
 
-        return $decodedResponse; // Retorna la respuesta decodificada
+        return $decodedResponse;
     }
 
 
 
     public function generate_transaction_form($order_id)
     {
-        $function_name = __FUNCTION__;
-        Logger::log("generando transaccion - " . $function_name, "info");
 
         $order = new WC_Order($order_id);
 
@@ -246,19 +217,10 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
          */
         $token_tienda = (bin2hex(random_bytes(30)));
 
-        /*
-         * Agregamos el id de sesion la OC.
-         * Esto permitira que validemos el pago mas tarde
-         * Este valor no cambiara para la OC si est que ya está Creado
-         *
-         */
         $token_tienda_db = get_post_meta($order_id, "_token_tienda", true);
-        Logger::log($token_tienda_db);
         if (is_null($token_tienda_db) || $token_tienda_db == "") {
-            Logger::log("No existe TOKEN, lo agrego");
             add_post_meta($order_id, '_token_tienda', $token_tienda, true);
         } else {
-            Logger::log("Existe session");
             $token_tienda = $token_tienda_db;
         }
 
@@ -283,9 +245,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
         $secret_keys = $this->get_secret_keys($this->rut_comercio);
 
-        error_log("secret_keys: " . json_encode($secret_keys));
         if (isset($secret_keys['error']) and $secret_keys['error'] == true) {
-            error_log("Error al obtener las llaves secretas");
             header('Refresh: 5; URL=' . get_home_url() . '/');
             wp_die("Error al obtener las llaves secretas, comuniquese con el administrador del sitio");
         }
@@ -314,16 +274,11 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
             "dte_type" => 48
         );
 
-        logger::log("Datos enviados a Swipe: " . json_encode($new_data));
-        error_log("rut comercio: " . $this->rut_comercio);
-
-
         $transaction = new Transaction();
         $transaction->environment =  $this->environment;
         $transaction->setToken($this->token_secret);
         $res = $transaction->initTransaction($new_data);
-        error_log("Respuesta de Swipe: " . json_encode($res));
-        // add res url to meta data si fuera necesario usarlo fuera del flujo
+
         add_post_meta($order_id, '_url_payment', $res, true);
         return $res;
     }
@@ -336,11 +291,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
     public function checkout_order()
     {
-        $function_name = __FUNCTION__;
-        Logger::log("Entrando a checkout_order - " . $function_name, "info");
-
         if (isset($_GET['x_result']) and $_GET['x_result'] == 'failed') {
-            error_log("Pago cancelado");
             $order_id = $_GET['x_reference'] ?? null;
             $order = new WC_Order($order_id);
             $order->update_status('cancelled', __('Pago cancelado', 'woocommerce'));
@@ -350,23 +301,17 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
                     'woocommerce'
                 )
             );
-            error_log("Orden cancelada, order_id: $order_id");
             wc_add_notice(__('Pago cancelado', 'woocommerce'), 'error');
         }
-        //TODO capturar pagos pendientes, verificar que sean del mismo token y usuario, luego mostrar un wc_add_notice que incluya los links hacia el pago pendiente
-        //? hecho ↑
-        error_log("Pagos pendiente");
-        //get order id from session
+
         $order_id = WC()->session->get('order_id');
         $order = new WC_Order($order_id);
-        // obtener todas las ordenes en estado processing del usuario
         $user_id = $order->get_user_id();
         $orders = wc_get_orders(array(
             'limit' => -1,
             'customer_id' => $user_id,
             'status' => 'processing'
         ));
-        // generar link de pago para cada orden
         $ordenes_pendientes = array();
         foreach ($orders as $order) {
             $res_url = $this->generate_transaction_form($order->get_id());
@@ -375,7 +320,6 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
                 'url' => $res_url
             );
         }
-        error_log("Ordenes pendientes: " . json_encode($ordenes_pendientes));
         if (!empty($ordenes_pendientes)) {
             $respuesta = "<p>Ya tienes ordenes pendientes de pago, si deseas pagar o cancelar una haz click en la orden correspondiente: ";
 
@@ -389,11 +333,7 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
 
     public function thankyou_page_callback()
     {
-        $function_name = __FUNCTION__;
-        Logger::log("Entrando a la pagina de pago completado - " . $function_name, "info");
-
         if (isset($_GET['x_result']) and $_GET['x_result'] == 'completed') {
-            error_log("Pago completado");
             $order_id = $_GET['x_reference'] ?? null;
             $order = new WC_Order($order_id);
             $order->update_status('completed', __('Pago completado', 'woocommerce'));
@@ -403,13 +343,9 @@ class WC_Plugin_Gateway extends \WC_Payment_Gateway
                     'woocommerce'
                 )
             );
-            error_log("Orden completada, order_id: $order_id");
             wc_add_notice(__('Pago completado', 'woocommerce'), 'success');
             WC()->cart->empty_cart();
-            // wp_redirect(wc_get_checkout_url());
-            // exit;
             $url_home = get_home_url();
-            // setimeout para que se ejecute despues de 5 segundos
             echo "<script>
                 setTimeout(function(){
                     window.location.href = '" . $url_home . "';

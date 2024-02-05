@@ -70,7 +70,7 @@ class WCPluginGateway extends \WC_Payment_Gateway
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
 
 
-        add_action("woocommerce_checkout_order_review", array($this, "checkoutOrder"), 10, 1);
+        add_action("woocommerce_checkout_order_review", array($this, "checkoutOrder"), 10);
         add_action("woocommerce_thankyou", array($this, "thankyouPageCallback"), 10);
     }
 
@@ -160,20 +160,41 @@ class WCPluginGateway extends \WC_Payment_Gateway
 
         $url_res = $this->generateTransactionForm($order_id);
 
-        echo '<p>' . __('Gracias! - Tu orden ahora está pendiente de pago. 
+        if (isset($_GET['x_result']) and $_GET['x_result'] == 'failed') {
+            error_log("entre al failed");
+            $order_id = $_GET['x_reference'] ?? null;
+            $order = new WC_Order($order_id);
+            $order->update_status('cancelled', __('Pago cancelado', 'woocommerce'));
+            WC()->cart->empty_cart();
+            $order->add_order_note(
+                __(
+                    'Pago cancelado',
+                    'woocommerce'
+                )
+            );
+
+            echo "<h1 class='woocommerce-error'>El pago ha sido cancelado</h1>";
+            echo "<script>
+                setTimeout(function(){
+                    window.location.href = '" . get_permalink(wc_get_page_id('shop')) . "';
+                }, 5000); // Redirige después de 5 segundos
+            </script>";
+        } else {
+            echo '<p>' . __('Gracias! - Tu orden ahora está pendiente de pago. 
         Deberías ser redirigido automáticamente a Web pay en 5 segundos.') . '</p>';
 
-        $url_payment = get_post_meta($order_id, '_url_payment', true);
+            $url_payment = get_post_meta($order_id, '_url_payment', true);
 
-        echo '<p>Si no eres redirigido automáticamente, haz click en el siguiente botón:</p>';
-        echo '<a href="' . $url_payment . '" class="button alt" id="submit_payment_form">'
-            . __('Pagar', 'woocommerce') . '</a>';
+            echo '<p>Si no eres redirigido automáticamente, haz click en el siguiente botón:</p>';
+            echo '<a href="' . $url_payment . '" class="button alt" id="submit_payment_form">'
+                . __('Pagar', 'woocommerce') . '</a>';
 
-        echo "<script>
+            echo "<script>
                 setTimeout(function(){
                     window.location.href = '" . $url_payment . "';
                 }, 5000); // Redirige después de 5 segundos
             </script>";
+        }
     }
 
     public function getSecretKeys($rut)
@@ -250,7 +271,7 @@ class WCPluginGateway extends \WC_Payment_Gateway
 
         if (isset($secret_keys['error']) and $secret_keys['error'] == true) {
             header('Refresh: 5; URL=' . get_home_url() . '/');
-            wp_die("Error al obtener las llaves secretas, comuniquese con el administrador del sitio");
+            wp_die("Error al obtener claves secretas, comuniquese con el administrador del sitio");
         }
 
         $this->token_secret = $secret_keys['secret_key'];
@@ -271,7 +292,7 @@ class WCPluginGateway extends \WC_Payment_Gateway
             "x_shop_country" => !empty($shop_country) ? $shop_country : 'CL',
             "x_shop_name" => $nombreSitio,
             "x_url_callback" => $this->notify_url,
-            "x_url_cancel" => wc_get_checkout_url(),
+            "x_url_cancel" => $order->get_checkout_payment_url(true) . "&",
             "x_url_complete" => $this->get_return_url($order) . "&",
             "secret" => $_ENV['SECRET'],
             "dte_type" => 48
@@ -281,6 +302,18 @@ class WCPluginGateway extends \WC_Payment_Gateway
         $transaction->environment =  $this->environment;
         $transaction->setToken($this->token_secret);
         $res = $transaction->initTransaction($new_data);
+
+        $apiBaseUrl = $_ENV["URL_INTENT"];
+
+        if (preg_match('/^' . preg_quote($apiBaseUrl, '/') . '([a-zA-Z0-9]{24})$/', $res, $matches)) {
+            $identifier = $matches[1];
+            error_log("Identificador de la transaccion: " . $identifier);
+            $res = $apiBaseUrl . $identifier;
+        } else {
+            header('Refresh: 5; URL=' . get_home_url() . '/');
+            wp_die("Error al obtener link de pago, comuniquese con el administrador del sitio");
+        }
+
 
         add_post_meta($order_id, '_url_payment', $res, true);
         return $res;
@@ -294,26 +327,13 @@ class WCPluginGateway extends \WC_Payment_Gateway
 
     public function checkoutOrder()
     {
-        if (isset($_GET['x_result']) and $_GET['x_result'] == 'failed') {
-            $order_id = $_GET['x_reference'] ?? null;
-            $order = new WC_Order($order_id);
-            $order->update_status('cancelled', __('Pago cancelado', 'woocommerce'));
-            $order->add_order_note(
-                __(
-                    'Pago cancelado',
-                    'woocommerce'
-                )
-            );
-            wc_add_notice(__('Pago cancelado', 'woocommerce'), 'error');
-        }
-
         $order_id = WC()->session->get('order_id');
         $order = new WC_Order($order_id);
         $user_id = $order->get_user_id();
         $orders = wc_get_orders(array(
             'limit' => -1,
             'customer_id' => $user_id,
-            'status' => 'processing'
+            'status' => 'pending'
         ));
         $ordenes_pendientes = array();
         foreach ($orders as $order) {
@@ -341,6 +361,7 @@ class WCPluginGateway extends \WC_Payment_Gateway
             $order_id = $_GET['x_reference'] ?? null;
             $order = new WC_Order($order_id);
             $order->update_status('completed', __('Pago completado', 'woocommerce'));
+            $order->payment_complete();
             $order->add_order_note(
                 __(
                     'Pago completado',

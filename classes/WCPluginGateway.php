@@ -161,7 +161,6 @@ class WCPluginGateway extends \WC_Payment_Gateway
         $url_res = $this->generateTransactionForm($order_id);
 
         if (isset($_GET['x_result']) and $_GET['x_result'] == 'failed') {
-            error_log("entre al failed");
             $order_id = $_GET['x_reference'] ?? null;
             $order = new WC_Order($order_id);
             $order->update_status('cancelled', __('Pago cancelado', 'woocommerce'));

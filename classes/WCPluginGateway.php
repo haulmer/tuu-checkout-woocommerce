@@ -234,8 +234,6 @@ class WCPluginGateway extends \WC_Payment_Gateway
 
         $order = new WC_Order($order_id);
 
-        $order->update_status('processing', __('Orden recibida, pendiente de pago.', 'woocommerce'));
-
         /*
          * Este es el token que representará la transaccion.
          */
@@ -307,7 +305,6 @@ class WCPluginGateway extends \WC_Payment_Gateway
 
         if (preg_match('/^' . preg_quote($apiBaseUrl, '/') . '([a-zA-Z0-9]{24})$/', $res, $matches)) {
             $identifier = $matches[1];
-            error_log("Identificador de la transaccion: " . $identifier);
             $res = $apiBaseUrl . $identifier;
         } else {
             header('Refresh: 5; URL=' . get_home_url() . '/');

@@ -159,8 +159,6 @@ class WCPluginGateway extends \WC_Payment_Gateway
     public function receiptPage($order_id)
     {
 
-        $url_res = $this->generateTransactionForm($order_id);
-
         if (isset($_GET['x_result']) and $_GET['x_result'] == 'failed') {
             error_log("La pagina recibe una cancelacion de pago o un error en el pago, ambos se consideran failed");
             $order_id = $_GET['x_reference'] ?? null;
@@ -181,6 +179,7 @@ class WCPluginGateway extends \WC_Payment_Gateway
                 }, 5000); // Redirige después de 5 segundos
             </script>";
         } else {
+            $url_res = $this->generateTransactionForm($order_id);
             error_log("La pagina recibe una orden de pago, se procede a redirigir al usuario a la pagina de pago de webpay");
             echo '<p>' . __('Gracias! - Tu orden ahora está pendiente de pago. 
         Deberías ser redirigido automáticamente a Web pay en 5 segundos.') . '</p>';

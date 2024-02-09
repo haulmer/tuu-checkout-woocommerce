@@ -147,7 +147,6 @@ class WCPluginGateway extends \WC_Payment_Gateway
     {   
         error_log("comenzando proceso de pago luego de hacer click en el boton de realizar pedido");
         $order = new WC_Order($order_id);
-        error_log("status de la orden: " . $order_id->get_status());
 
         WC()->session->set('order_id', $order_id);
 

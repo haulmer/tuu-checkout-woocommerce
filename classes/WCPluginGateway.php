@@ -302,12 +302,18 @@ class WCPluginGateway extends \WC_Payment_Gateway
         $transaction->setToken($this->token_secret);
         $res = $transaction->initTransaction($new_data);
 
-        $apiBaseUrl = $_ENV["URL_INTENT"];
+        if ($this->environment == "DESARROLLO") {
+            $apiBaseUrl = $_ENV["URL_INTENT"];
+        } else {
+            $apiBaseUrl = $_ENV["URL_INTENT_PROD"];
+        }
+
 
         if (preg_match('/^' . preg_quote($apiBaseUrl, '/') . '([a-zA-Z0-9]{24})$/', $res, $matches)) {
             $identifier = $matches[1];
             $res = $apiBaseUrl . $identifier;
         } else {
+            $order->update_status('failed', __('Error al obtener link de pago', 'woocommerce'));
             header('Refresh: 5; URL=' . get_home_url() . '/');
             wp_die("Error al obtener link de pago, comuniquese con el administrador del sitio");
         }

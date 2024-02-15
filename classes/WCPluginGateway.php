@@ -19,6 +19,7 @@ class WCPluginGateway extends \WC_Payment_Gateway
     public $environment;
     public $notify_url;
     public $rut_comercio;
+    public $clave_secreta;
 
     public $icon_dir;
 
@@ -50,6 +51,8 @@ class WCPluginGateway extends \WC_Payment_Gateway
         $this->rut_comercio = $this->get_option('rut');
 
         $this->enabled = $this->get_option('enabled');
+
+        $this->clave_secreta = $this->get_option('clave_secreta');
 
         if ($this->rut_comercio != "") {
             $validator = new RutValidator();
@@ -137,6 +140,15 @@ class WCPluginGateway extends \WC_Payment_Gateway
                 'desc_tip' => true,
                 'placeholder' => '12345678-9'
             ),
+            'clave_secreta' => array(
+                'title' => __('Clave secreta', 'woocommerce'),
+                'type' => 'password',
+                'description' => 'La clave secreta es necesaria para poder emitir las keys de acceso a los servicios de pago',
+                'label' => __('Clave secreta', 'woocommerce'),
+                'default' => '',
+                'desc_tip' => true,
+                'placeholder' => 'Clave secreta',
+            )
         );
     }
 
@@ -182,29 +194,29 @@ class WCPluginGateway extends \WC_Payment_Gateway
             $url_res = $this->generateTransactionForm($order_id);
             error_log("La pagina recibe una orden de pago, se procede a redirigir al usuario a la pagina de pago de webpay");
             echo '<p>' . __('Gracias! - Tu orden ahora está pendiente de pago. 
-        Deberías ser redirigido automáticamente a Web pay en 5 segundos.') . '</p>';
-
-            $url_payment = get_post_meta($order_id, '_url_payment', true);
+                Deberías ser redirigido automáticamente a Web pay en 5 segundos.') . '</p>';
 
             echo '<p>Si no eres redirigido automáticamente, haz click en el siguiente botón:</p>';
-            echo '<a href="' . $url_payment . '" class="button alt" id="submit_payment_form">'
+            echo '<a href="' . $url_res . '" class="button alt" id="submit_payment_form">'
                 . __('Pagar', 'woocommerce') . '</a>';
 
             echo "<script>
                 setTimeout(function(){
-                    window.location.href = '" . $url_payment . "';
+                    window.location.href = '" . $url_res . "';
                 }, 5000); // Redirige después de 5 segundos
             </script>";
         }
     }
 
-    public function getSecretKeys($rut)
+    public function getToken($rut)
     {
-        $url = $_ENV["URL_SK"] . $rut;
+        $url = $_ENV['URL_SK'] . "api/v1/token/" . $rut;
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json'));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Accept: application/json',
+            'Authorization: Bearer ' . $this->clave_secreta));
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -219,13 +231,36 @@ class WCPluginGateway extends \WC_Payment_Gateway
 
         curl_close($ch);
 
-        $decodedResponse = json_decode($response, true);
+        return json_decode($response, true);
+    }
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return 'Error decodificando JSON: ' . json_last_error_msg();
+    public function validateToken($token)
+    {
+        $url = $_ENV['URL_SK'] . "api/v1/validatetoken";
+        $data = array('token' => $token);
+        $data_string = json_encode($data);
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Accept: application/json',
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $this->clave_secreta));
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        if (curl_errno($ch)) {
+            curl_close($ch);
+            return 'Error en cURL: ' . curl_error($ch);
+        } elseif ($httpCode != 200) {
+            curl_close($ch);
+            return array('error' => true, 'message' => 'Error en la petición: ' . $httpCode);
         }
 
-        return $decodedResponse;
+        curl_close($ch);
+
+        return json_decode($response, true);
     }
 
 
@@ -266,12 +301,15 @@ class WCPluginGateway extends \WC_Payment_Gateway
         $cadenaProductos = rtrim($cadenaProductos, ', ');
 
 
-        $secret_keys = $this->getSecretKeys($this->rut_comercio);
+        $token = $this->getToken($this->rut_comercio);
 
         if (isset($secret_keys['error']) and $secret_keys['error'] == true) {
             header('Refresh: 5; URL=' . get_home_url() . '/');
             wp_die("Error al obtener claves secretas, comuniquese con el administrador del sitio");
         }
+
+        $secret_keys = $this->validateToken($token['token']);
+
 
         $this->token_secret = $secret_keys['secret_key'];
         $this->token_service = $secret_keys['account_id'];
@@ -361,7 +399,7 @@ class WCPluginGateway extends \WC_Payment_Gateway
     }
 
     public function thankyouPageCallback()
-    {   
+    {
         error_log("El pago ha sido completado, se procede a actualizar el estado de la orden y redirigir al usuario a la pagina de inicio");
         if (isset($_GET['x_result']) and $_GET['x_result'] == 'completed') {
             $order_id = $_GET['x_reference'] ?? null;
@@ -374,7 +412,6 @@ class WCPluginGateway extends \WC_Payment_Gateway
                     'woocommerce'
                 )
             );
-            wc_add_notice(__('Pago completado', 'woocommerce'), 'success');
             WC()->cart->empty_cart();
             $url_home = get_home_url();
             echo "<script>

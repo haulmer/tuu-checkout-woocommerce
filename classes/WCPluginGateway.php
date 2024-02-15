@@ -211,8 +211,6 @@ class WCPluginGateway extends \WC_Payment_Gateway
     public function getToken($rut)
     {
         $url = $_ENV['URL_SK'] . "api/v1/token/" . $rut;
-        error_log("url: " . $url);
-        error_log("clave secreta: " . $this->clave_secreta);
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -304,7 +302,6 @@ class WCPluginGateway extends \WC_Payment_Gateway
 
 
         $token = $this->getToken($this->rut_comercio);
-        error_log("token: " . json_encode($token));
 
         if (isset($secret_keys['error']) and $secret_keys['error'] == true) {
             header('Refresh: 5; URL=' . get_home_url() . '/');
@@ -313,7 +310,6 @@ class WCPluginGateway extends \WC_Payment_Gateway
 
         $secret_keys = $this->validateToken($token['token']);
 
-        error_log("secret keys: " . json_encode($secret_keys));
 
         $this->token_secret = $secret_keys['secret_key'];
         $this->token_service = $secret_keys['account_id'];

@@ -210,7 +210,9 @@ class WCPluginGateway extends \WC_Payment_Gateway
 
     public function getToken($rut)
     {
-        $url = $_ENV['URL_SK'] . "api/v1/token/" . $rut;
+        // $url = $_ENV['URL_SK'] . "token/" . $rut;
+        $url_base = $this->environment == "DESARROLLO" ? $_ENV['URL_DESARROLLO'] : $_ENV['URL_PRODUCCION'];
+        $url = $url_base . "/token/" . $rut;
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -236,7 +238,8 @@ class WCPluginGateway extends \WC_Payment_Gateway
 
     public function validateToken($token)
     {
-        $url = $_ENV['URL_SK'] . "api/v1/validatetoken";
+        $url_base = $this->environment == "DESARROLLO" ? $_ENV['URL_DESARROLLO'] : $_ENV['URL_PRODUCCION'];
+        $url = $url_base . "/validatetoken";
         $data = array('token' => $token);
         $data_string = json_encode($data);
         $ch = curl_init($url);
@@ -303,12 +306,22 @@ class WCPluginGateway extends \WC_Payment_Gateway
 
         $token = $this->getToken($this->rut_comercio);
 
+
         if (isset($secret_keys['error']) and $secret_keys['error'] == true) {
+            $order->update_status('failed', __('Error al obtener claves secret", "woocommerce'));
+            WC()->cart->empty_cart();
             header('Refresh: 5; URL=' . get_home_url() . '/');
             wp_die("Error al obtener claves secretas, comuniquese con el administrador del sitio");
         }
 
         $secret_keys = $this->validateToken($token['token']);
+
+        if (isset($secret_keys['error']) and $secret_keys['error'] == true) {
+            $order->update_status('failed', __('Error al obtener claves secret", "woocommerce'));
+            WC()->cart->empty_cart();
+            header('Refresh: 5; URL=' . get_home_url() . '/');
+            wp_die("Error al validar token, comuniquese con el administrador del sitio");
+        }
 
 
         $this->token_secret = $secret_keys['secret_key'];
@@ -346,12 +359,15 @@ class WCPluginGateway extends \WC_Payment_Gateway
             $apiBaseUrl = $_ENV["URL_INTENT_PROD"];
         }
 
+        error_log("api base url: " . $apiBaseUrl);
+
 
         if (preg_match('/^' . preg_quote($apiBaseUrl, '/') . '([a-zA-Z0-9]{24})$/', $res, $matches)) {
             $identifier = $matches[1];
             $res = $apiBaseUrl . $identifier;
         } else {
             $order->update_status('failed', __('Error al obtener link de pago', 'woocommerce'));
+            WC()->cart->empty_cart();
             header('Refresh: 5; URL=' . get_home_url() . '/');
             wp_die("Error al obtener link de pago, comuniquese con el administrador del sitio");
         }

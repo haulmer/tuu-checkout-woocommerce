@@ -134,7 +134,7 @@ class WCPluginGateway extends \WC_Payment_Gateway
             'rut' => array(
                 'title' => __('Rut Comercio', 'woocommerce'),
                 'type' => 'text',
-                'description' => 'El rut es necesario para poder emitir las keys de acceso a los servicios de pago',
+                'description' => 'Formato de RUT; Sin puntos y con guion, por ejemplo; 12345678-5',
                 'label' => __('Rut de la tienda', 'woocommerce'),
                 'default' => '',
                 'desc_tip' => true,

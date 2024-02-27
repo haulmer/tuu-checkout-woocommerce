@@ -6,7 +6,7 @@ namespace WoocommercePlugin;
     Plugin Name: TUU Checkout Pago Online
     Description: Recibe pagos con tarjeta en tu tienda con la pasarela de pagos más conveniente.
     Version:     1.0.2
-    Author:      Fabian Pacheco
+    Author:      Tuu
  */
 
 include_once 'vendor/autoload.php';

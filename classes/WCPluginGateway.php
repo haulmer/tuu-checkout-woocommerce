@@ -325,13 +325,10 @@ class WCPluginGateway extends \WC_Payment_Gateway
         }
         $cadenaProductos = rtrim($cadenaProductos, ', ');
 
-        error_log("rut comercio: " . $this->rut_comercio);
-        error_log("clave secreta: " . $this->clave_secreta);
         $token = $this->getToken($this->rut_comercio);
-        error_log("token obtenido: " . json_encode($token));
 
 
-        if (isset($secret_keys['error']) and $secret_keys['error'] == true) {
+        if (isset($token['error']) and $token['error'] == true) {
             $order->update_status('failed', __('Error al obtener token", "woocommerce'));
             WC()->cart->empty_cart();
             header('Refresh: 5; URL=' . get_home_url() . '/');
@@ -339,7 +336,6 @@ class WCPluginGateway extends \WC_Payment_Gateway
         }
 
         $secret_keys = $this->validateToken($token['token']);
-        error_log("secret keys: " . json_encode($secret_keys));
 
         if (isset($secret_keys['error']) and $secret_keys['error'] == true) {
             $order->update_status('failed', __('Error al obtener claves secretas", "woocommerce'));
@@ -385,7 +381,6 @@ class WCPluginGateway extends \WC_Payment_Gateway
             header('Refresh: 5; URL=' . get_home_url() . '/');
             wp_die("Error al obtener link de pago, comuniquese con el administrador del sitio");
         }
-
 
         add_post_meta($order_id, '_url_payment', $res, true);
         return $res;

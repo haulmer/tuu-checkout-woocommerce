@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "441fc9e6f0c30352e932e0f8538720c7",
+    "content-hash": "4f5fcc82d1d4f2758e1eb225639c239d",
     "packages": [
         {
             "name": "graham-campbell/result-type",
@@ -70,16 +70,16 @@
         },
         {
             "name": "pacheco/swipe-woocommerce-php-sdk",
-            "version": "v1.0.1",
+            "version": "v1.0.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/F4bian-pacheco/Swipe-Wocommerce-php-sdk.git",
-                "reference": "5498c03994cdef4051e69dc1ffaaadbfec300308"
+                "reference": "f5b713d466d8d2633d111e9fe90ea1f7805084a5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/F4bian-pacheco/Swipe-Wocommerce-php-sdk/zipball/5498c03994cdef4051e69dc1ffaaadbfec300308",
-                "reference": "5498c03994cdef4051e69dc1ffaaadbfec300308",
+                "url": "https://api.github.com/repos/F4bian-pacheco/Swipe-Wocommerce-php-sdk/zipball/f5b713d466d8d2633d111e9fe90ea1f7805084a5",
+                "reference": "f5b713d466d8d2633d111e9fe90ea1f7805084a5",
                 "shasum": ""
             },
             "type": "library",
@@ -98,9 +98,9 @@
             "description": "sdk con metodos y clases necesarios para las transacciones",
             "support": {
                 "issues": "https://github.com/F4bian-pacheco/Swipe-Wocommerce-php-sdk/issues",
-                "source": "https://github.com/F4bian-pacheco/Swipe-Wocommerce-php-sdk/tree/v1.0.1"
+                "source": "https://github.com/F4bian-pacheco/Swipe-Wocommerce-php-sdk/tree/v1.0.2"
             },
-            "time": "2024-01-24T13:16:23+00:00"
+            "time": "2024-02-19T15:24:01+00:00"
         },
         {
             "name": "phpoption/phpoption",

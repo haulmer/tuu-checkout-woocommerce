@@ -6,7 +6,7 @@ namespace WoocommercePlugin;
     Plugin Name: TUU Checkout Pago Online
     Description: Recibe pagos con tarjeta en tu tienda con la pasarela de pagos más conveniente.
     Version:     1.0.2
-    Author:      Fabian Pacheco
+    Author:      Tuu
  */
 
 include_once 'vendor/autoload.php';
@@ -60,7 +60,7 @@ function crear_nueva_pagina_checkout()
     if (!$pagina_existente) {
         if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
             $nueva_pagina = array(
-                'post_title' => 'Tuu Checkout Page',
+                'post_title' => 'Tuu Checkout',
                 'post_name' => 'checkout-tuu-page',
                 'post_status' => 'publish',
                 'post_type' => 'page',
@@ -131,6 +131,13 @@ function mostrar_mensaje_activacion_plugin()
     // Elimina la opción después de mostrar el mensaje
     delete_option('checkout_plugin_page_created');
 }
+function enqueue_admin_scripts()
+{
+    wp_enqueue_script('mi-plugin-admin-script', plugin_dir_url(__FILE__) . 'js/validate-rut.js', array('jquery'), '1.0.0', true);
+}
+
+
+add_action('admin_enqueue_scripts', 'enqueue_admin_scripts');
 
 add_action('admin_notices', 'WoocommercePlugin\mostrar_mensaje_activacion_plugin');
 

@@ -15,7 +15,7 @@
         }
     ],
     "require": {
-        "pacheco/swipe-woocommerce-php-sdk": "^1.0.1",
+        "pacheco/swipe-woocommerce-php-sdk": "^1.0.2",
         "vlucas/phpdotenv": "^5.6"
     }
 }

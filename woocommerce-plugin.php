@@ -137,7 +137,7 @@ function enqueue_admin_scripts()
 }
 
 
-add_action('admin_enqueue_scripts', 'enqueue_admin_scripts');
+add_action('admin_enqueue_scripts', 'WoocommercePlugin\enqueue_admin_scripts');
 
 add_action('admin_notices', 'WoocommercePlugin\mostrar_mensaje_activacion_plugin');
 

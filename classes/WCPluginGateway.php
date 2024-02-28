@@ -60,7 +60,7 @@ class WCPluginGateway extends \WC_Payment_Gateway
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
 
 
-        add_action("woocommerce_review_order_before_shipping", array($this, "checkoutOrder"), 10);
+        add_action("woocommerce_checkout_order_review", array($this, "checkoutOrder"), 10);
         add_action("woocommerce_thankyou", array($this, "thankyouPageCallback"), 10);
     }
 
@@ -144,16 +144,22 @@ class WCPluginGateway extends \WC_Payment_Gateway
     private function change_ambiente()
     {
         add_action('admin_footer', function () {
+            $rut_guardado = $this->rut_comercio;
+            $clave_secreta_guardada = $this->clave_secreta;
+
             ?>
             <script>
                 jQuery(document).ready(function ($) {
+                    var savedRut = $('#woocommerce_wcplugingateway_rut').val();
+                    var savedClave = $('#woocommerce_wcplugingateway_clave_secreta').val();
                     function updateFields() {
-                        if ($('#woocommerce_wcplugingateway_ambiente').val() === 'DESARROLLO') {
+                        var ambiente = $('#woocommerce_wcplugingateway_ambiente').val();
+                        if (ambiente === 'DESARROLLO') {
                             $('#woocommerce_wcplugingateway_rut').val('12345678-5').prop('readonly', true);
                             $('#woocommerce_wcplugingateway_clave_secreta').val('b03b8a125decec19e12f9b8b425343008ce0f214c1e7e7483b15e546ecd28c30434cee53ffb6c711').prop('readonly', true);
                         } else {
-                            $('#woocommerce_wcplugingateway_rut').val('').prop('readonly', false);
-                            $('#woocommerce_wcplugingateway_clave_secreta').val('').prop('readonly', false);
+                            $('#woocommerce_wcplugingateway_rut').val('<?php echo esc_js($rut_guardado); ?>').prop('readonly', false);
+                            $('#woocommerce_wcplugingateway_clave_secreta').val('<?php echo esc_js($clave_secreta_guardada); ?>').prop('readonly', false);
                         }
                     }
     
@@ -208,6 +214,7 @@ class WCPluginGateway extends \WC_Payment_Gateway
             </script>";
         } else {
             $url_res = $this->generateTransactionForm($order_id);
+            update_post_meta($order_id, '_url_payment', $url_res);
             error_log("La pagina recibe una orden de pago, se procede a redirigir al usuario a la pagina de pago de webpay");
             echo '<p>' . __('Gracias! - Tu orden ahora está pendiente de pago. 
                 Deberías ser redirigido automáticamente a Web pay en 5 segundos.') . '</p>';
@@ -371,30 +378,19 @@ class WCPluginGateway extends \WC_Payment_Gateway
         $transaction->setToken($this->token_secret);
         $res = $transaction->initTransaction($new_data);
 
-        if ($this->environment == "DESARROLLO") {
-            $apiBaseUrl = $_ENV["URL_INTENT"];
-        } else {
-            $apiBaseUrl = $_ENV["URL_INTENT_PROD"];
+        if (!preg_match('/^https?:\/\/[\w\-\.]+[\w\-]+[\w\-\.]*(?:\:\d+)?(?:\/[^\s]*)?$/', $res)) {
+            // La URL no es válida
+            $order->update_status('failed', __('Error al obtener link de pago', 'woocommerce'));
+            WC()->cart->empty_cart();
+            header('Refresh: 5; URL=' . get_home_url() . '/');
+            wp_die("Error al obtener link de pago, comuniquese con el administrador del sitio");
         }
-
-        error_log("api base url: " . $apiBaseUrl);
-
-
-        // if (preg_match('/^' . preg_quote($apiBaseUrl, '/') . '([a-zA-Z0-9]{24})$/', $res, $matches)) {
-        //     $identifier = $matches[1];
-        //     $res = $apiBaseUrl . $identifier;
-        // } else {
-        //     $order->update_status('failed', __('Error al obtener link de pago', 'woocommerce'));
-        //     WC()->cart->empty_cart();
-        //     header('Refresh: 5; URL=' . get_home_url() . '/');
-        //     wp_die("Error al obtener link de pago, comuniquese con el administrador del sitio");
-        // }
 
 
         add_post_meta($order_id, '_url_payment', $res, true);
         return $res;
     }
-    
+
     public function checkoutOrder()
     {
         error_log("comenzando proceso de checkout, se verifica si el usuario tiene ordenes pendientes de pago");
@@ -408,7 +404,7 @@ class WCPluginGateway extends \WC_Payment_Gateway
         ));
         $ordenes_pendientes = array();
         foreach ($orders as $order) {
-            $res_url = $this->generateTransactionForm($order->get_id());
+            $res_url = get_post_meta($order->get_id(), '_url_payment', true);
             $ordenes_pendientes[] = array(
                 'order_id' => $order->get_id(),
                 'url' => $res_url

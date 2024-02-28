@@ -1,5 +1,5 @@
 function validateRut(rut) {
-  rut = rut.replace(/[^0-9kK]/g, ''); // Remove any non-digit characters except 'k' or 'K'
+  rut = rut.replace(/[^0-9kK]/g, ''); // Elimina todos los caracteres no numéricos excepto "k" o "K".
 
   if (rut.length < 9 || rut.length > 10) {
     return false;
@@ -47,12 +47,10 @@ jQuery(document).ready(function ($) {
 
   $('#woocommerce_wcplugingateway_clave_secreta').after('<p id="clave-secreta-error" class="error-message" style="color:red;"></p>');
 
-  // Evento de entrada (input) para validar la longitud del campo y actualizar el mensaje
   $('#woocommerce_wcplugingateway_clave_secreta').on('input', function () {
     var claveSecreta = $(this).val();
     var longitud = claveSecreta.length;
 
-    // Actualizar el mensaje de error basado en la longitud del valor ingresado
     if (longitud !== 80) {
       $('#clave-secreta-error').text('La clave secreta debe tener exactamente 80 caracteres. Actualmente tiene ' + longitud + '.').show();
     } else {

@@ -48,7 +48,3 @@ Para obtener soporte, visita nuestro sitio web o contacta a nuestro equipo de so
 ## Más Información
 
 Para más detalles sobre el plugin Tuu Checkout y su funcionamiento, visita [tu sitio web].
-
----
-
-Este es un ejemplo de plantilla que puedes adaptar según las características y funcionalidades específicas de tu plugin.
